@@ -340,18 +340,3 @@ Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uc
 | 6 | 20–26.01 | Redakcja raportu, dokumentacja, testy, poprawki |
 
 ---
-
-## 11. Bibliografia metodologiczna (wybór)
-
-- Grimmer, J., & Stewart, B. M. (2013). Text as data: The promise and pitfalls of automatic content analysis methods for political texts. *Political Analysis*, 21(3), 267–297.
-- Proksch, S. O., & Slapin, J. B. (2010). Position taking in European Parliament speeches. *British Journal of Political Science*, 40(3), 587–611.
-- Laver, M., Benoit, K., & Garry, J. (2003). Extracting policy positions from political texts using words as data. *American Political Science Review*, 97(2), 311–331.
-- Wielgosz, M., et al. (2017). Experiment on Methods for Clustering and Categorization of Polish Text. *Computing and Informatics*, 36(1), 186–204.
-
----
-
-**Uwaga**: Projekt realizowany jest wyłącznie w celach edukacyjnych i badawczych. Analiza opiera się na publicznie dostępnych danych udostępnianych przez Kancelarię Sejmu RP zgodnie z zasadami dostępu do informacji publicznej.
-
----
-
-*Ostatnia aktualizacja: grudzień 2024*
