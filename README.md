@@ -1,18 +1,19 @@
-# Konspekt projektu zaliczeniowego
 
-**Przedmiot:** Text Mining
 
 ---
 
 # Lingwistyczne profile ugrupowań politycznych w Sejmie X kadencji
 
-## Analiza interpelacji poselskich i stenogramów sejmowych metodami eksploracji tekstu
+## Analiza interpelacji poselskich i stenogramów sejmowych metodami eksploracji tekstu  
 
-| | |
+### Konspekt projektu zaliczeniowego  
+
+|||
 |---|---|
 | **Autor:** | Krzysztof Stawarz |
 | **Kierunek:** | Informatyka Społeczna, II stopień |
 | **Specjalność:** | Sztuczna inteligencja i data mining |
+| **Przedmiot:** | Text mining |
 | **Prowadzący:** | dr hab. inż. Maciej Wielgosz |
 | **Semestr:** | zimowy 2024/2025 |
 
