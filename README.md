@@ -121,18 +121,15 @@ Stenogramy to pełne transkrypcje wystąpień na posiedzeniach plenarnych Sejmu.
 
 ### 4.4. Analizowane ugrupowania
 
-| Klub/koło | Pozycja | Orientacja | Liczba posłów* |
-|-----------|---------|------------|----------------|
-| Prawo i Sprawiedliwość (PiS) | Opozycja | Prawica konserwatywna | ~190 |
-| Koalicja Obywatelska (KO) | Koalicja rządząca | Centrum/centrolewica | ~157 |
-| Polska 2050 — Trzecia Droga | Koalicja rządząca | Centrum | ~33 |
-| Polskie Stronnictwo Ludowe (PSL) | Koalicja rządząca | Centrum/agraryzm | ~32 |
-| Konfederacja | Opozycja | Prawica wolnościowa | ~18 |
-| Lewica | Koalicja rządząca | Lewica | ~24 |
-| Razem | Koalicja rządząca** | Lewica | ~6 |
-
-*Stan na grudzień 2024, liczby przybliżone.  
-**Razem wyodrębniło się z klubu Lewicy w trakcie kadencji.
+* Prawo i Sprawiedliwość
+* Koalicja Obywatelska
+* Konfederacja
+* Brauniści
+* Trzecia Droga
+  - Polska2050
+  - Polskie Stronnictwo Ludowe
+* Nowa Lewica
+* Razem
 
 ---
 
