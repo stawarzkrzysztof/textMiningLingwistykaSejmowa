@@ -1,5 +1,7 @@
 data/
+dataDownload/data
 .venv/
+dataDownload/.venv
 __pycache__/
 *.pyc
 .DS_Store
