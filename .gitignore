@@ -1,12 +1,6 @@
-# Large downloaded/generated data
 data/
-
-# Local python environment
 .venv/
-
-# Python junk
 __pycache__/
 *.pyc
-
-# macOS
 .DS_Store
+.ipynb_checkpoints/
