@@ -71,7 +71,6 @@ from typing import Any, Iterable, Optional
 import httpx
 from tqdm import tqdm
 
-
 # -----------------------------
 # Logging
 # -----------------------------

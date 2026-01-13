@@ -24,7 +24,8 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 
 try:
     from tqdm import tqdm
