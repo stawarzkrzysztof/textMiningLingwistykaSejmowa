@@ -71,7 +71,11 @@ def light_human_interaction(page) -> None:
     """
     try:
         # Small mouse move within viewport
-        page.mouse.move(random.randint(50, 400), random.randint(80, 500), steps=random.randint(8, 20))
+        page.mouse.move(
+            random.randint(50, 400),
+            random.randint(80, 500),
+            steps=random.randint(8, 20),
+        )
     except Exception:
         pass
 
@@ -148,7 +152,9 @@ def handle_block_with_backoff(page, url: str, max_backoff_rounds: int) -> None:
 
         # Backoff with jitter
         wait_s = backoff_seconds * random.uniform(0.8, 1.4)
-        print(f"\nAnti-bot detected. Backing off for ~{int(wait_s)}s (round {round_idx}/{max_backoff_rounds})...")
+        print(
+            f"\nAnti-bot detected. Backing off for ~{int(wait_s)}s (round {round_idx}/{max_backoff_rounds})..."
+        )
         time.sleep(wait_s)
 
         # Retry navigation
@@ -214,15 +220,34 @@ def maybe_take_long_break(counter: int, next_break_at: int) -> Tuple[bool, int]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--outdir", default="sejm10_mps_scraped", help="Output directory for JSON files.")
+    ap.add_argument(
+        "--outdir",
+        default="sejm10_mps_scraped",
+        help="Output directory for JSON files.",
+    )
     ap.add_argument("--start", type=int, default=1)
     ap.add_argument("--end", type=int, default=460)
-    ap.add_argument("--profile-dir", default="pw_profile_sejm10", help="Persistent Playwright profile dir.")
-    ap.add_argument("--headless", action="store_true", help="Headless mode (not recommended for first run).")
-    ap.add_argument("--use-installed-chrome", action="store_true",
-                    help="Use your installed Google Chrome via Playwright channel='chrome' (optional).")
-    ap.add_argument("--min-delay", type=float, default=0.9, help="Min delay between MPs (seconds).")
-    ap.add_argument("--max-delay", type=float, default=2.4, help="Max delay between MPs (seconds).")
+    ap.add_argument(
+        "--profile-dir",
+        default="pw_profile_sejm10",
+        help="Persistent Playwright profile dir.",
+    )
+    ap.add_argument(
+        "--headless",
+        action="store_true",
+        help="Headless mode (not recommended for first run).",
+    )
+    ap.add_argument(
+        "--use-installed-chrome",
+        action="store_true",
+        help="Use your installed Google Chrome via Playwright channel='chrome' (optional).",
+    )
+    ap.add_argument(
+        "--min-delay", type=float, default=0.9, help="Min delay between MPs (seconds)."
+    )
+    ap.add_argument(
+        "--max-delay", type=float, default=2.4, help="Max delay between MPs (seconds)."
+    )
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -250,16 +275,22 @@ def main() -> int:
         context = p.chromium.launch_persistent_context(**launch_kwargs)
 
         # Mildly “normal” headers
-        context.set_extra_http_headers({
-            "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.7,en;q=0.6",
-        })
+        context.set_extra_http_headers(
+            {
+                "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.7,en;q=0.6",
+            }
+        )
 
         page = context.new_page()
         page.set_default_timeout(60_000)
 
         # Start from a “normal” landing first (optional but helps some WAFs)
         try:
-            goto_with_wait(page, "https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp", timeout_ms=60_000)
+            goto_with_wait(
+                page,
+                "https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp",
+                timeout_ms=60_000,
+            )
             human_pause(0.8, 2.0)
         except Exception:
             pass
@@ -281,7 +312,9 @@ def main() -> int:
             for attempt in range(1, 4):
                 try:
                     data = scrape_one(page, i)
-                    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                    out_path.write_text(
+                        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
                     last_err = None
                     break
                 except PlaywrightTimeoutError as e:
@@ -297,7 +330,9 @@ def main() -> int:
                     "url": BASE_URL.format(id3=str(i).zfill(3)),
                     "error": repr(last_err),
                 }
-                out_path.write_text(json.dumps(err_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                out_path.write_text(
+                    json.dumps(err_data, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
 
         context.close()
 

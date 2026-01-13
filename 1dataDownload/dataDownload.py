@@ -91,7 +91,7 @@ def slugify(s: str, max_len: int = 80) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = _slug_re.sub("-", s).strip("-").lower()
-    return (s[:max_len] if s else "unknown")
+    return s[:max_len] if s else "unknown"
 
 
 def safe_int(x: Any) -> Optional[int]:
@@ -110,7 +110,9 @@ def safe_int(x: Any) -> Optional[int]:
         return None
 
 
-def write_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]) -> None:
+def write_csv(
+    path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -120,7 +122,7 @@ def write_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str])
 
 
 def _backoff(attempt: int, base: float = 0.6, cap: float = 12.0) -> float:
-    t = min(cap, base * (2 ** attempt))
+    t = min(cap, base * (2**attempt))
     return t * (0.6 + random.random() * 0.8)
 
 
@@ -178,12 +180,16 @@ def ensure_dirs(cfg: Config) -> None:
     # Interpellations
     (cfg.raw_dir / "interpellations" / "pages").mkdir(parents=True, exist_ok=True)
     (cfg.raw_dir / "interpellations" / "by_num").mkdir(parents=True, exist_ok=True)
-    (cfg.raw_dir / "interpellations" / "by_author_ptr").mkdir(parents=True, exist_ok=True)
+    (cfg.raw_dir / "interpellations" / "by_author_ptr").mkdir(
+        parents=True, exist_ok=True
+    )
 
     # Written questions
     (cfg.raw_dir / "writtenQuestions" / "pages").mkdir(parents=True, exist_ok=True)
     (cfg.raw_dir / "writtenQuestions" / "by_num").mkdir(parents=True, exist_ok=True)
-    (cfg.raw_dir / "writtenQuestions" / "by_author_ptr").mkdir(parents=True, exist_ok=True)
+    (cfg.raw_dir / "writtenQuestions" / "by_author_ptr").mkdir(
+        parents=True, exist_ok=True
+    )
 
     # Committees
     (cfg.raw_dir / "committees" / "sittings").mkdir(parents=True, exist_ok=True)
@@ -194,9 +200,13 @@ def ensure_dirs(cfg: Config) -> None:
 
 
 def make_client(cfg: Config) -> httpx.AsyncClient:
-    limits = httpx.Limits(max_connections=cfg.max_connections, max_keepalive_connections=cfg.max_keepalive)
+    limits = httpx.Limits(
+        max_connections=cfg.max_connections, max_keepalive_connections=cfg.max_keepalive
+    )
     headers = {"User-Agent": cfg.user_agent}
-    return httpx.AsyncClient(http2=cfg.http2, headers=headers, limits=limits, follow_redirects=True)
+    return httpx.AsyncClient(
+        http2=cfg.http2, headers=headers, limits=limits, follow_redirects=True
+    )
 
 
 async def request_with_retries(
@@ -214,7 +224,9 @@ async def request_with_retries(
 
     for attempt in range(max_retries + 1):
         try:
-            r = await client.request(method, url, headers=headers, params=params, timeout=timeout_s)
+            r = await client.request(
+                method, url, headers=headers, params=params, timeout=timeout_s
+            )
 
             if accept_404 and r.status_code == 404:
                 return r
@@ -229,7 +241,11 @@ async def request_with_retries(
             r.raise_for_status()
             return r
 
-        except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as e:
+        except (
+            httpx.TimeoutException,
+            httpx.TransportError,
+            httpx.HTTPStatusError,
+        ) as e:
             last_err = e
             if attempt >= max_retries:
                 break
@@ -306,15 +322,30 @@ async def run_job_pool(
 # -----------------------------
 # Fetch primitives (with cache / force)
 # -----------------------------
-async def fetch_json_to_file(cfg: Config, client: httpx.AsyncClient, url: str, path: Path, *, accept_404: bool = False) -> FetchResult:
+async def fetch_json_to_file(
+    cfg: Config,
+    client: httpx.AsyncClient,
+    url: str,
+    path: Path,
+    *,
+    accept_404: bool = False,
+) -> FetchResult:
     if not cfg.force and path.exists() and path.stat().st_size > 0:
         return FetchResult(ok=True, status_code=200, url=url, path=path)
 
     try:
-        r = await request_with_retries(client, "GET", url, headers={"Accept": "application/json"}, accept_404=accept_404)
+        r = await request_with_retries(
+            client,
+            "GET",
+            url,
+            headers={"Accept": "application/json"},
+            accept_404=accept_404,
+        )
         if accept_404 and r.status_code == 404:
             await write_text(path, "")  # marker
-            return FetchResult(ok=False, status_code=404, url=url, path=path, error="404")
+            return FetchResult(
+                ok=False, status_code=404, url=url, path=path, error="404"
+            )
         await write_json(path, r.json())
         return FetchResult(ok=True, status_code=r.status_code, url=url, path=path)
     except Exception as e:
@@ -322,15 +353,27 @@ async def fetch_json_to_file(cfg: Config, client: httpx.AsyncClient, url: str, p
         return FetchResult(ok=False, status_code=0, url=url, path=path, error=str(e))
 
 
-async def fetch_text_to_file(cfg: Config, client: httpx.AsyncClient, url: str, path: Path, *, accept: str = "text/html", accept_404: bool = False) -> FetchResult:
+async def fetch_text_to_file(
+    cfg: Config,
+    client: httpx.AsyncClient,
+    url: str,
+    path: Path,
+    *,
+    accept: str = "text/html",
+    accept_404: bool = False,
+) -> FetchResult:
     if not cfg.force and path.exists() and path.stat().st_size > 0:
         return FetchResult(ok=True, status_code=200, url=url, path=path)
 
     try:
-        r = await request_with_retries(client, "GET", url, headers={"Accept": accept}, accept_404=accept_404)
+        r = await request_with_retries(
+            client, "GET", url, headers={"Accept": accept}, accept_404=accept_404
+        )
         if accept_404 and r.status_code == 404:
             await write_text(path, "")  # marker
-            return FetchResult(ok=False, status_code=404, url=url, path=path, error="404")
+            return FetchResult(
+                ok=False, status_code=404, url=url, path=path, error="404"
+            )
         await write_text(path, r.text)
         return FetchResult(ok=True, status_code=r.status_code, url=url, path=path)
     except Exception as e:
@@ -338,15 +381,21 @@ async def fetch_text_to_file(cfg: Config, client: httpx.AsyncClient, url: str, p
         return FetchResult(ok=False, status_code=0, url=url, path=path, error=str(e))
 
 
-async def fetch_attachment(cfg: Config, client: httpx.AsyncClient, url: str, path: Path) -> FetchResult:
+async def fetch_attachment(
+    cfg: Config, client: httpx.AsyncClient, url: str, path: Path
+) -> FetchResult:
     if not cfg.force and path.exists() and path.stat().st_size > 0:
         return FetchResult(ok=True, status_code=200, url=url, path=path)
 
     try:
-        async with client.stream("GET", url, headers={"Accept": "*/*"}, timeout=60.0) as r:
+        async with client.stream(
+            "GET", url, headers={"Accept": "*/*"}, timeout=60.0
+        ) as r:
             if r.status_code == 404:
                 await write_bytes(path, b"")
-                return FetchResult(ok=False, status_code=404, url=url, path=path, error="404")
+                return FetchResult(
+                    ok=False, status_code=404, url=url, path=path, error="404"
+                )
             if r.status_code in (429, 500, 502, 503, 504):
                 # let request_with_retries handle these; stream does not use it, so do a small manual retry
                 raise httpx.HTTPStatusError("transient", request=r.request, response=r)
@@ -387,7 +436,9 @@ def extract_dates(obj: Any) -> list[str]:
     return sorted(found)
 
 
-async def download_mps_and_clubs(cfg: Config) -> tuple[list[dict[str, Any]], dict[int, dict[str, Any]], list[dict[str, Any]]]:
+async def download_mps_and_clubs(
+    cfg: Config,
+) -> tuple[list[dict[str, Any]], dict[int, dict[str, Any]], list[dict[str, Any]]]:
     mp_list_url = f"{cfg.api_root}/sejm/term{cfg.term}/MP"
     clubs_url = f"{cfg.api_root}/sejm/term{cfg.term}/clubs"
     mp_list_path = cfg.raw_dir / "mp" / "mp_list.json"
@@ -433,7 +484,12 @@ async def download_mps_and_clubs(cfg: Config) -> tuple[list[dict[str, Any]], dic
     return mp_list, mp_details, clubs_list
 
 
-def build_dim_tables(cfg: Config, mp_list: list[dict[str, Any]], mp_details: dict[int, dict[str, Any]], clubs_list: list[dict[str, Any]]) -> tuple[dict[int, str], dict[int, str]]:
+def build_dim_tables(
+    cfg: Config,
+    mp_list: list[dict[str, Any]],
+    mp_details: dict[int, dict[str, Any]],
+    clubs_list: list[dict[str, Any]],
+) -> tuple[dict[int, str], dict[int, str]]:
     mp_dim_rows: list[dict[str, Any]] = []
 
     for mp in mp_list:
@@ -441,17 +497,24 @@ def build_dim_tables(cfg: Config, mp_list: list[dict[str, Any]], mp_details: dic
         if not mp_id:
             continue
         det = mp_details.get(mp_id, {})
-        mp_dim_rows.append({
-            "mp_id": mp_id,
-            "name": mp.get("firstLastName") or mp.get("name") or det.get("firstLastName") or "",
-            "club": mp.get("club") or det.get("club") or "",
-            "districtName": det.get("districtName") or "",
-            "voivodeship": det.get("voivodeship") or "",
-            "birthDate": det.get("birthDate") or "",
-            "birthPlace": det.get("birthPlace") or "",
-            "educationLevel": det.get("educationLevel") or det.get("education") or "",
-            "profession": det.get("profession") or "",
-        })
+        mp_dim_rows.append(
+            {
+                "mp_id": mp_id,
+                "name": mp.get("firstLastName")
+                or mp.get("name")
+                or det.get("firstLastName")
+                or "",
+                "club": mp.get("club") or det.get("club") or "",
+                "districtName": det.get("districtName") or "",
+                "voivodeship": det.get("voivodeship") or "",
+                "birthDate": det.get("birthDate") or "",
+                "birthPlace": det.get("birthPlace") or "",
+                "educationLevel": det.get("educationLevel")
+                or det.get("education")
+                or "",
+                "profession": det.get("profession") or "",
+            }
+        )
 
     if mp_dim_rows:
         mp_dim_path = cfg.tables_dir / "dim_mp.csv"
@@ -460,11 +523,13 @@ def build_dim_tables(cfg: Config, mp_list: list[dict[str, Any]], mp_details: dic
 
     club_rows: list[dict[str, Any]] = []
     for c in clubs_list:
-        club_rows.append({
-            "club_id": c.get("id") or "",
-            "name": c.get("name") or "",
-            "membersCount": c.get("membersCount") or "",
-        })
+        club_rows.append(
+            {
+                "club_id": c.get("id") or "",
+                "name": c.get("name") or "",
+                "membersCount": c.get("membersCount") or "",
+            }
+        )
     club_dim_path = cfg.tables_dir / "dim_club.csv"
     write_csv(club_dim_path, club_rows, ["club_id", "name", "membersCount"])
     logger.info("Wrote: %s", club_dim_path)
@@ -474,7 +539,9 @@ def build_dim_tables(cfg: Config, mp_list: list[dict[str, Any]], mp_details: dic
     return mp_id_to_name, mp_id_to_slug
 
 
-async def download_proceedings_and_transcript_indexes(cfg: Config) -> list[tuple[int, str]]:
+async def download_proceedings_and_transcript_indexes(
+    cfg: Config,
+) -> list[tuple[int, str]]:
     proceedings_url = f"{cfg.api_root}/sejm/term{cfg.term}/proceedings"
     proceedings_path = cfg.raw_dir / "proceedings" / "proceedings.json"
 
@@ -486,7 +553,13 @@ async def download_proceedings_and_transcript_indexes(cfg: Config) -> list[tuple
     # unique proceeding numbers
     nums: list[int] = []
     for p in proceedings:
-        n = safe_int(p.get("num") or p.get("number") or p.get("proceedingNum") or p.get("sitting") or p.get("id"))
+        n = safe_int(
+            p.get("num")
+            or p.get("number")
+            or p.get("proceedingNum")
+            or p.get("sitting")
+            or p.get("id")
+        )
         if n is not None:
             nums.append(n)
     nums = sorted(set(nums))
@@ -499,11 +572,15 @@ async def download_proceedings_and_transcript_indexes(cfg: Config) -> list[tuple
         path = cfg.raw_dir / "proceedings" / "details" / f"{n}.json"
         detail_jobs.append((url, path))
 
-    async def detail_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def detail_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_json_to_file(cfg, client, url, path, accept_404=True)
 
-    ok, fail = await run_job_pool(cfg, detail_jobs, detail_handler, desc="Proceeding details (JSON)")
+    ok, fail = await run_job_pool(
+        cfg, detail_jobs, detail_handler, desc="Proceeding details (JSON)"
+    )
     logger.info("Proceeding details OK=%d FAIL=%d", ok, fail)
 
     # build proceeding-day pairs
@@ -523,7 +600,13 @@ async def download_proceedings_and_transcript_indexes(cfg: Config) -> list[tuple
         if not dates:
             # fallback: try to find dates in proceedings list entry
             for p in proceedings:
-                pn = safe_int(p.get("num") or p.get("number") or p.get("proceedingNum") or p.get("sitting") or p.get("id"))
+                pn = safe_int(
+                    p.get("num")
+                    or p.get("number")
+                    or p.get("proceedingNum")
+                    or p.get("sitting")
+                    or p.get("id")
+                )
                 if pn == n:
                     dates = extract_dates(p)
                     break
@@ -541,17 +624,23 @@ async def download_proceedings_and_transcript_indexes(cfg: Config) -> list[tuple
         path = cfg.raw_dir / "transcripts" / "index_by_day" / f"p{n}" / f"d{d}.json"
         idx_jobs.append((url, path))
 
-    async def idx_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def idx_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_json_to_file(cfg, client, url, path, accept_404=True)
 
-    ok, fail = await run_job_pool(cfg, idx_jobs, idx_handler, desc="Transcript indexes (JSON)")
+    ok, fail = await run_job_pool(
+        cfg, idx_jobs, idx_handler, desc="Transcript indexes (JSON)"
+    )
     logger.info("Transcript indexes OK=%d FAIL=%d", ok, fail)
 
     return pairs
 
 
-def build_transcript_statement_index(cfg: Config, mp_id_to_slug: dict[int, str]) -> tuple[list[dict[str, Any]], list[tuple[str, Path]]]:
+def build_transcript_statement_index(
+    cfg: Config, mp_id_to_slug: dict[int, str]
+) -> tuple[list[dict[str, Any]], list[tuple[str, Path]]]:
     base = cfg.raw_dir / "transcripts" / "index_by_day"
     idx_files = list(base.rglob("d*.json"))
 
@@ -580,29 +669,50 @@ def build_transcript_statement_index(cfg: Config, mp_id_to_slug: dict[int, str])
             function = st.get("function") or ""
             unspoken = st.get("unspoken")
 
-            statement_rows.append({
-                "term": cfg.term,
-                "proceedingNum": proceeding_num,
-                "date": date,
-                "statementNum": st_num,
-                "memberID": mp_id if mp_id is not None else "",
-                "name": name,
-                "function": function,
-                "startDateTime": st.get("startDateTime") or "",
-                "endDateTime": st.get("endDateTime") or "",
-                "rapporteur": st.get("rapporteur") if st.get("rapporteur") is not None else "",
-                "secretary": st.get("secretary") if st.get("secretary") is not None else "",
-                "unspoken": unspoken if unspoken is not None else "",
-            })
+            statement_rows.append(
+                {
+                    "term": cfg.term,
+                    "proceedingNum": proceeding_num,
+                    "date": date,
+                    "statementNum": st_num,
+                    "memberID": mp_id if mp_id is not None else "",
+                    "name": name,
+                    "function": function,
+                    "startDateTime": st.get("startDateTime") or "",
+                    "endDateTime": st.get("endDateTime") or "",
+                    "rapporteur": st.get("rapporteur")
+                    if st.get("rapporteur") is not None
+                    else "",
+                    "secretary": st.get("secretary")
+                    if st.get("secretary") is not None
+                    else "",
+                    "unspoken": unspoken if unspoken is not None else "",
+                }
+            )
 
             st_num_str = str(st_num)
             url = f"{cfg.api_root}/sejm/term{cfg.term}/proceedings/{proceeding_num}/{date}/transcripts/{st_num_str}"
 
             if mp_id and mp_id > 0:
                 mp_folder = f"{mp_id:03d}-{mp_id_to_slug.get(mp_id, slugify(name))}"
-                path = cfg.raw_dir / "transcripts" / "html_by_mp" / mp_folder / f"p{proceeding_num}" / f"d{date}" / f"s{st_num_str}.html"
+                path = (
+                    cfg.raw_dir
+                    / "transcripts"
+                    / "html_by_mp"
+                    / mp_folder
+                    / f"p{proceeding_num}"
+                    / f"d{date}"
+                    / f"s{st_num_str}.html"
+                )
             else:
-                path = cfg.raw_dir / "transcripts" / "html_non_mp" / f"p{proceeding_num}" / f"d{date}" / f"s{st_num_str}.html"
+                path = (
+                    cfg.raw_dir
+                    / "transcripts"
+                    / "html_non_mp"
+                    / f"p{proceeding_num}"
+                    / f"d{date}"
+                    / f"s{st_num_str}.html"
+                )
 
             html_jobs.append((url, path))
 
@@ -612,23 +722,41 @@ def build_transcript_statement_index(cfg: Config, mp_id_to_slug: dict[int, str])
         write_csv(
             fact_path,
             statement_rows,
-            ["term", "proceedingNum", "date", "statementNum", "memberID", "name", "function",
-             "startDateTime", "endDateTime", "rapporteur", "secretary", "unspoken"]
+            [
+                "term",
+                "proceedingNum",
+                "date",
+                "statementNum",
+                "memberID",
+                "name",
+                "function",
+                "startDateTime",
+                "endDateTime",
+                "rapporteur",
+                "secretary",
+                "unspoken",
+            ],
         )
         logger.info("Wrote: %s (rows=%d)", fact_path, len(statement_rows))
 
     return statement_rows, html_jobs
 
 
-async def download_many_html(cfg: Config, jobs: list[tuple[str, Path]], desc: str) -> tuple[int, int]:
+async def download_many_html(
+    cfg: Config, jobs: list[tuple[str, Path]], desc: str
+) -> tuple[int, int]:
     async def handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
         url, path = job
-        return await fetch_text_to_file(cfg, client, url, path, accept="text/html", accept_404=True)
+        return await fetch_text_to_file(
+            cfg, client, url, path, accept="text/html", accept_404=True
+        )
 
     return await run_job_pool(cfg, jobs, handler, desc=desc)
 
 
-async def paginated_list(cfg: Config, client: httpx.AsyncClient, url: str, page_dir: Path) -> list[dict[str, Any]]:
+async def paginated_list(
+    cfg: Config, client: httpx.AsyncClient, url: str, page_dir: Path
+) -> list[dict[str, Any]]:
     all_items: list[dict[str, Any]] = []
     offset = 0
     limit = cfg.page_limit
@@ -669,7 +797,9 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
         items = await paginated_list(cfg, client, base_list_url, page_dir)
 
     logger.info("Interpellations list items: %d", len(items))
-    nums = sorted({safe_int(it.get("num")) for it in items if safe_int(it.get("num")) is not None})
+    nums = sorted(
+        {safe_int(it.get("num")) for it in items if safe_int(it.get("num")) is not None}
+    )
     logger.info("Interpellations unique nums: %d", len(nums))
 
     # details jobs
@@ -679,11 +809,15 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
         path = cfg.raw_dir / "interpellations" / "by_num" / f"{n}" / "details.json"
         detail_jobs.append((url, path))
 
-    async def details_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def details_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_json_to_file(cfg, client, url, path, accept_404=True)
 
-    ok, fail = await run_job_pool(cfg, detail_jobs, details_handler, desc="Interpellations details (JSON)")
+    ok, fail = await run_job_pool(
+        cfg, detail_jobs, details_handler, desc="Interpellations details (JSON)"
+    )
     logger.info("Interpellations details OK=%d FAIL=%d", ok, fail)
 
     # build body/reply/attachment jobs + author pointers
@@ -709,11 +843,29 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
                 author_ids.append(ai)
 
         for ai in author_ids:
-            ptr_dir = cfg.raw_dir / "interpellations" / "by_author_ptr" / f"{ai:03d}-{mp_id_to_slug.get(ai, 'unknown')}"
+            ptr_dir = (
+                cfg.raw_dir
+                / "interpellations"
+                / "by_author_ptr"
+                / f"{ai:03d}-{mp_id_to_slug.get(ai, 'unknown')}"
+            )
             ptr_path = ptr_dir / f"i{n}.json"
-            author_ptr_rows.append({"mp_id": ai, "num": n, "ptr_path": str(ptr_path.relative_to(cfg.raw_dir))})
+            author_ptr_rows.append(
+                {
+                    "mp_id": ai,
+                    "num": n,
+                    "ptr_path": str(ptr_path.relative_to(cfg.raw_dir)),
+                }
+            )
             if cfg.force or not ptr_path.exists():
-                await write_json(ptr_path, {"type": "interpellation", "num": n, "target": str(det_path.parent)})
+                await write_json(
+                    ptr_path,
+                    {
+                        "type": "interpellation",
+                        "num": n,
+                        "target": str(det_path.parent),
+                    },
+                )
 
         body_url = f"{cfg.api_root}/sejm/term{cfg.term}/interpellations/{n}/body"
         body_path = cfg.raw_dir / "interpellations" / "by_num" / f"{n}" / "body.html"
@@ -724,7 +876,14 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
             if not key:
                 continue
             rep_url = f"{cfg.api_root}/sejm/term{cfg.term}/interpellations/{n}/reply/{key}/body"
-            rep_path = cfg.raw_dir / "interpellations" / "by_num" / f"{n}" / "replies" / f"{key}.html"
+            rep_path = (
+                cfg.raw_dir
+                / "interpellations"
+                / "by_num"
+                / f"{n}"
+                / "replies"
+                / f"{key}.html"
+            )
             reply_jobs.append((rep_url, rep_path))
 
             if cfg.download_attachments:
@@ -732,7 +891,15 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
                     aurl = att.get("URL")
                     aname = att.get("name") or "attachment.bin"
                     if aurl:
-                        apath = cfg.raw_dir / "interpellations" / "by_num" / f"{n}" / "attachments" / f"{key}" / aname
+                        apath = (
+                            cfg.raw_dir
+                            / "interpellations"
+                            / "by_num"
+                            / f"{n}"
+                            / "attachments"
+                            / f"{key}"
+                            / aname
+                        )
                         attach_jobs.append((aurl, apath))
 
     if author_ptr_rows:
@@ -740,20 +907,37 @@ async def download_interpellations(cfg: Config, mp_id_to_slug: dict[int, str]) -
         write_csv(ptr_index_path, author_ptr_rows, ["mp_id", "num", "ptr_path"])
         logger.info("Wrote: %s", ptr_index_path)
 
-    ok1, fail1 = await download_many_html(cfg, body_jobs, "Interpellations bodies (HTML)")
-    ok2, fail2 = await download_many_html(cfg, reply_jobs, "Interpellations replies (HTML)")
-    logger.info("Interpellations body OK=%d FAIL=%d; reply OK=%d FAIL=%d", ok1, fail1, ok2, fail2)
+    ok1, fail1 = await download_many_html(
+        cfg, body_jobs, "Interpellations bodies (HTML)"
+    )
+    ok2, fail2 = await download_many_html(
+        cfg, reply_jobs, "Interpellations replies (HTML)"
+    )
+    logger.info(
+        "Interpellations body OK=%d FAIL=%d; reply OK=%d FAIL=%d",
+        ok1,
+        fail1,
+        ok2,
+        fail2,
+    )
 
     if cfg.download_attachments and attach_jobs:
-        async def attach_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+
+        async def attach_handler(
+            client: httpx.AsyncClient, job: tuple[str, Path]
+        ) -> FetchResult:
             url, path = job
             return await fetch_attachment(cfg, client, url, path)
 
-        ok_a, fail_a = await run_job_pool(cfg, attach_jobs, attach_handler, desc="Interpellations attachments")
+        ok_a, fail_a = await run_job_pool(
+            cfg, attach_jobs, attach_handler, desc="Interpellations attachments"
+        )
         logger.info("Interpellations attachments OK=%d FAIL=%d", ok_a, fail_a)
 
 
-async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str]) -> None:
+async def download_written_questions(
+    cfg: Config, mp_id_to_slug: dict[int, str]
+) -> None:
     base_list_url = f"{cfg.api_root}/sejm/term{cfg.term}/writtenQuestions"
     page_dir = cfg.raw_dir / "writtenQuestions" / "pages"
 
@@ -761,7 +945,9 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
         items = await paginated_list(cfg, client, base_list_url, page_dir)
 
     logger.info("writtenQuestions list items: %d", len(items))
-    nums = sorted({safe_int(it.get("num")) for it in items if safe_int(it.get("num")) is not None})
+    nums = sorted(
+        {safe_int(it.get("num")) for it in items if safe_int(it.get("num")) is not None}
+    )
     logger.info("writtenQuestions unique nums: %d", len(nums))
 
     detail_jobs: list[tuple[str, Path]] = []
@@ -770,11 +956,15 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
         path = cfg.raw_dir / "writtenQuestions" / "by_num" / f"{n}" / "details.json"
         detail_jobs.append((url, path))
 
-    async def details_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def details_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_json_to_file(cfg, client, url, path, accept_404=True)
 
-    ok, fail = await run_job_pool(cfg, detail_jobs, details_handler, desc="writtenQuestions details (JSON)")
+    ok, fail = await run_job_pool(
+        cfg, detail_jobs, details_handler, desc="writtenQuestions details (JSON)"
+    )
     logger.info("writtenQuestions details OK=%d FAIL=%d", ok, fail)
 
     body_jobs: list[tuple[str, Path]] = []
@@ -799,11 +989,29 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
                 author_ids.append(ai)
 
         for ai in author_ids:
-            ptr_dir = cfg.raw_dir / "writtenQuestions" / "by_author_ptr" / f"{ai:03d}-{mp_id_to_slug.get(ai, 'unknown')}"
+            ptr_dir = (
+                cfg.raw_dir
+                / "writtenQuestions"
+                / "by_author_ptr"
+                / f"{ai:03d}-{mp_id_to_slug.get(ai, 'unknown')}"
+            )
             ptr_path = ptr_dir / f"q{n}.json"
-            author_ptr_rows.append({"mp_id": ai, "num": n, "ptr_path": str(ptr_path.relative_to(cfg.raw_dir))})
+            author_ptr_rows.append(
+                {
+                    "mp_id": ai,
+                    "num": n,
+                    "ptr_path": str(ptr_path.relative_to(cfg.raw_dir)),
+                }
+            )
             if cfg.force or not ptr_path.exists():
-                await write_json(ptr_path, {"type": "writtenQuestion", "num": n, "target": str(det_path.parent)})
+                await write_json(
+                    ptr_path,
+                    {
+                        "type": "writtenQuestion",
+                        "num": n,
+                        "target": str(det_path.parent),
+                    },
+                )
 
         body_url = f"{cfg.api_root}/sejm/term{cfg.term}/writtenQuestions/{n}/body"
         body_path = cfg.raw_dir / "writtenQuestions" / "by_num" / f"{n}" / "body.html"
@@ -814,7 +1022,14 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
             if not key:
                 continue
             rep_url = f"{cfg.api_root}/sejm/term{cfg.term}/writtenQuestions/{n}/reply/{key}/body"
-            rep_path = cfg.raw_dir / "writtenQuestions" / "by_num" / f"{n}" / "replies" / f"{key}.html"
+            rep_path = (
+                cfg.raw_dir
+                / "writtenQuestions"
+                / "by_num"
+                / f"{n}"
+                / "replies"
+                / f"{key}.html"
+            )
             reply_jobs.append((rep_url, rep_path))
 
             if cfg.download_attachments:
@@ -822,7 +1037,15 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
                     aurl = att.get("URL")
                     aname = att.get("name") or "attachment.bin"
                     if aurl:
-                        apath = cfg.raw_dir / "writtenQuestions" / "by_num" / f"{n}" / "attachments" / f"{key}" / aname
+                        apath = (
+                            cfg.raw_dir
+                            / "writtenQuestions"
+                            / "by_num"
+                            / f"{n}"
+                            / "attachments"
+                            / f"{key}"
+                            / aname
+                        )
                         attach_jobs.append((aurl, apath))
 
     if author_ptr_rows:
@@ -830,16 +1053,31 @@ async def download_written_questions(cfg: Config, mp_id_to_slug: dict[int, str])
         write_csv(ptr_index_path, author_ptr_rows, ["mp_id", "num", "ptr_path"])
         logger.info("Wrote: %s", ptr_index_path)
 
-    ok1, fail1 = await download_many_html(cfg, body_jobs, "writtenQuestions bodies (HTML)")
-    ok2, fail2 = await download_many_html(cfg, reply_jobs, "writtenQuestions replies (HTML)")
-    logger.info("writtenQuestions body OK=%d FAIL=%d; reply OK=%d FAIL=%d", ok1, fail1, ok2, fail2)
+    ok1, fail1 = await download_many_html(
+        cfg, body_jobs, "writtenQuestions bodies (HTML)"
+    )
+    ok2, fail2 = await download_many_html(
+        cfg, reply_jobs, "writtenQuestions replies (HTML)"
+    )
+    logger.info(
+        "writtenQuestions body OK=%d FAIL=%d; reply OK=%d FAIL=%d",
+        ok1,
+        fail1,
+        ok2,
+        fail2,
+    )
 
     if cfg.download_attachments and attach_jobs:
-        async def attach_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+
+        async def attach_handler(
+            client: httpx.AsyncClient, job: tuple[str, Path]
+        ) -> FetchResult:
             url, path = job
             return await fetch_attachment(cfg, client, url, path)
 
-        ok_a, fail_a = await run_job_pool(cfg, attach_jobs, attach_handler, desc="writtenQuestions attachments")
+        ok_a, fail_a = await run_job_pool(
+            cfg, attach_jobs, attach_handler, desc="writtenQuestions attachments"
+        )
         logger.info("writtenQuestions attachments OK=%d FAIL=%d", ok_a, fail_a)
 
 
@@ -848,7 +1086,9 @@ async def download_committees(cfg: Config) -> None:
     committees_path = cfg.raw_dir / "committees" / "committees.json"
 
     async with make_client(cfg) as client:
-        await fetch_json_to_file(cfg, client, committees_url, committees_path, accept_404=True)
+        await fetch_json_to_file(
+            cfg, client, committees_url, committees_path, accept_404=True
+        )
 
     if not committees_path.exists() or committees_path.stat().st_size == 0:
         logger.warning("No committees list; skipping.")
@@ -866,11 +1106,15 @@ async def download_committees(cfg: Config) -> None:
         path = cfg.raw_dir / "committees" / "sittings" / f"{code}_sittings.json"
         sitting_jobs.append((url, path))
 
-    async def sitlist_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def sitlist_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_json_to_file(cfg, client, url, path, accept_404=True)
 
-    ok, fail = await run_job_pool(cfg, sitting_jobs, sitlist_handler, desc="Committees sittings lists (JSON)")
+    ok, fail = await run_job_pool(
+        cfg, sitting_jobs, sitlist_handler, desc="Committees sittings lists (JSON)"
+    )
     logger.info("Committees sittings list OK=%d FAIL=%d", ok, fail)
 
     # enumerate all sittings
@@ -895,21 +1139,33 @@ async def download_committees(cfg: Config) -> None:
     html_jobs: list[tuple[str, Path]] = []
     pdf_jobs: list[tuple[str, Path]] = []
     for code, sn in pairs:
-        html_url = f"{cfg.api_root}/sejm/term{cfg.term}/committees/{code}/sittings/{sn}/html"
-        pdf_url = f"{cfg.api_root}/sejm/term{cfg.term}/committees/{code}/sittings/{sn}/pdf"
-        html_path = cfg.raw_dir / "committees" / "sittings" / code / f"{sn}" / "sitting.html"
-        pdf_path = cfg.raw_dir / "committees" / "sittings" / code / f"{sn}" / "sitting.pdf"
+        html_url = (
+            f"{cfg.api_root}/sejm/term{cfg.term}/committees/{code}/sittings/{sn}/html"
+        )
+        pdf_url = (
+            f"{cfg.api_root}/sejm/term{cfg.term}/committees/{code}/sittings/{sn}/pdf"
+        )
+        html_path = (
+            cfg.raw_dir / "committees" / "sittings" / code / f"{sn}" / "sitting.html"
+        )
+        pdf_path = (
+            cfg.raw_dir / "committees" / "sittings" / code / f"{sn}" / "sitting.pdf"
+        )
         html_jobs.append((html_url, html_path))
         pdf_jobs.append((pdf_url, pdf_path))
 
     ok_h, fail_h = await download_many_html(cfg, html_jobs, "Committee sittings (HTML)")
     logger.info("Committee sittings HTML OK=%d FAIL=%d", ok_h, fail_h)
 
-    async def pdf_handler(client: httpx.AsyncClient, job: tuple[str, Path]) -> FetchResult:
+    async def pdf_handler(
+        client: httpx.AsyncClient, job: tuple[str, Path]
+    ) -> FetchResult:
         url, path = job
         return await fetch_attachment(cfg, client, url, path)
 
-    ok_p, fail_p = await run_job_pool(cfg, pdf_jobs, pdf_handler, "Committee sittings (PDF)")
+    ok_p, fail_p = await run_job_pool(
+        cfg, pdf_jobs, pdf_handler, "Committee sittings (PDF)"
+    )
     logger.info("Committee sittings PDF OK=%d FAIL=%d", ok_p, fail_p)
 
 
@@ -927,7 +1183,12 @@ async def main_async(cfg: Config) -> int:
     logger.info("Tables dir: %s", cfg.tables_dir)
 
     mp_list, mp_details, clubs_list = await download_mps_and_clubs(cfg)
-    logger.info("MP list=%d, MP details=%d, clubs=%d", len(mp_list), len(mp_details), len(clubs_list))
+    logger.info(
+        "MP list=%d, MP details=%d, clubs=%d",
+        len(mp_list),
+        len(mp_details),
+        len(clubs_list),
+    )
 
     _, mp_id_to_slug = build_dim_tables(cfg, mp_list, mp_details, clubs_list)
 
@@ -961,38 +1222,103 @@ async def main_async(cfg: Config) -> int:
 
     # quick validation summary
     logger.info("Validation summary:")
-    logger.info("  MP details: %d", count_files(cfg.raw_dir / "mp" / "details", "*.json"))
-    logger.info("  Transcript indexes: %d", count_files(cfg.raw_dir / "transcripts" / "index_by_day", "*.json"))
-    logger.info("  Transcript HTML (MP): %d", count_files(cfg.raw_dir / "transcripts" / "html_by_mp", "*.html"))
-    logger.info("  Interpellations bodies: %d", count_files(cfg.raw_dir / "interpellations" / "by_num", "body.html"))
-    logger.info("  writtenQuestions bodies: %d", count_files(cfg.raw_dir / "writtenQuestions" / "by_num", "body.html"))
+    logger.info(
+        "  MP details: %d", count_files(cfg.raw_dir / "mp" / "details", "*.json")
+    )
+    logger.info(
+        "  Transcript indexes: %d",
+        count_files(cfg.raw_dir / "transcripts" / "index_by_day", "*.json"),
+    )
+    logger.info(
+        "  Transcript HTML (MP): %d",
+        count_files(cfg.raw_dir / "transcripts" / "html_by_mp", "*.html"),
+    )
+    logger.info(
+        "  Interpellations bodies: %d",
+        count_files(cfg.raw_dir / "interpellations" / "by_num", "body.html"),
+    )
+    logger.info(
+        "  writtenQuestions bodies: %d",
+        count_files(cfg.raw_dir / "writtenQuestions" / "by_num", "body.html"),
+    )
 
     return 0
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Download Sejm texts (term-based) to local corpus.")
+    p = argparse.ArgumentParser(
+        description="Download Sejm texts (term-based) to local corpus."
+    )
     p.add_argument("--term", type=int, default=10, help="Sejm term, e.g. 10")
     p.add_argument("--api-root", default="https://api.sejm.gov.pl", help="API root")
-    p.add_argument("--project-root", default=".", help="Project root (default: current dir)")
-    p.add_argument("--user-agent", default="sejm-textmining/0.1 (research)", help="User-Agent header")
+    p.add_argument(
+        "--project-root", default=".", help="Project root (default: current dir)"
+    )
+    p.add_argument(
+        "--user-agent",
+        default="sejm-textmining/0.1 (research)",
+        help="User-Agent header",
+    )
 
-    p.add_argument("--concurrency", type=int, default=60, help="Async worker count (default 60)")
-    p.add_argument("--max-connections", type=int, default=200, help="HTTP connection pool max (default 200)")
-    p.add_argument("--max-keepalive", type=int, default=50, help="Keepalive pool max (default 50)")
-    p.add_argument("--page-limit", type=int, default=100, help="Pagination limit for lists (default 100)")
+    p.add_argument(
+        "--concurrency", type=int, default=60, help="Async worker count (default 60)"
+    )
+    p.add_argument(
+        "--max-connections",
+        type=int,
+        default=200,
+        help="HTTP connection pool max (default 200)",
+    )
+    p.add_argument(
+        "--max-keepalive", type=int, default=50, help="Keepalive pool max (default 50)"
+    )
+    p.add_argument(
+        "--page-limit",
+        type=int,
+        default=100,
+        help="Pagination limit for lists (default 100)",
+    )
 
     p.add_argument("--http2", action="store_true", help="Enable HTTP/2 (default on)")
-    p.add_argument("--no-http2", dest="http2", action="store_false", help="Disable HTTP/2")
+    p.add_argument(
+        "--no-http2", dest="http2", action="store_false", help="Disable HTTP/2"
+    )
     p.set_defaults(http2=True)
 
-    p.add_argument("--force", action="store_true", help="Redownload and overwrite cached files")
+    p.add_argument(
+        "--force", action="store_true", help="Redownload and overwrite cached files"
+    )
 
-    p.add_argument("--no-transcripts", dest="download_transcripts", action="store_false", help="Skip transcripts")
-    p.add_argument("--no-interpellations", dest="download_interpellations", action="store_false", help="Skip interpellations")
-    p.add_argument("--no-written-questions", dest="download_written_questions", action="store_false", help="Skip writtenQuestions")
-    p.add_argument("--no-attachments", dest="download_attachments", action="store_false", help="Skip attachments")
-    p.add_argument("--committees", dest="download_committees", action="store_true", help="Also download committee sittings (heavy)")
+    p.add_argument(
+        "--no-transcripts",
+        dest="download_transcripts",
+        action="store_false",
+        help="Skip transcripts",
+    )
+    p.add_argument(
+        "--no-interpellations",
+        dest="download_interpellations",
+        action="store_false",
+        help="Skip interpellations",
+    )
+    p.add_argument(
+        "--no-written-questions",
+        dest="download_written_questions",
+        action="store_false",
+        help="Skip writtenQuestions",
+    )
+    p.add_argument(
+        "--no-attachments",
+        dest="download_attachments",
+        action="store_false",
+        help="Skip attachments",
+    )
+    p.add_argument(
+        "--committees",
+        dest="download_committees",
+        action="store_true",
+        help="Also download committee sittings (heavy)",
+    )
 
     p.set_defaults(
         download_transcripts=True,
@@ -1032,21 +1358,17 @@ def build_config(args: argparse.Namespace) -> Config:
         term=args.term,
         api_root=args.api_root,
         user_agent=args.user_agent,
-
         project_root=project_root,
         data_dir=data_dir,
         raw_dir=raw_dir,
         tables_dir=tables_dir,
         logs_dir=logs_dir,
-
         http2=bool(args.http2),
         concurrency=int(args.concurrency),
         max_connections=int(args.max_connections),
         max_keepalive=int(args.max_keepalive),
         page_limit=int(args.page_limit),
-
         force=bool(args.force),
-
         download_transcripts=bool(args.download_transcripts),
         download_interpellations=bool(args.download_interpellations),
         download_written_questions=bool(args.download_written_questions),
