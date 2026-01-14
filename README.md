@@ -1,23 +1,21 @@
-
-
----
+------------------------------------------------------------------------
 
 # Lingwistyczne profile ugrupowań politycznych w Sejmie X kadencji
 
-## Analiza interpelacji poselskich i stenogramów sejmowych metodami eksploracji tekstu  
+## Analiza interpelacji poselskich i stenogramów sejmowych metodami eksploracji tekstu
 
-### Konspekt projektu zaliczeniowego  
+### Konspekt projektu zaliczeniowego
 
 |||
 |---|---|
 | **Autor:** | Krzysztof Stawarz |
 | **Kierunek:** | Informatyka Społeczna, II stopień |
 | **Specjalność:** | Sztuczna inteligencja i data mining |
-| **Przedmiot:** | Text mining |
-| **Prowadzący:** | dr hab. inż. Maciej Wielgosz |
-| **Semestr:** | zimowy 2024/2025 |
+| **Przedmiot:**   | Text mining                         |
+| **Prowadzący:**  | dr hab. inż. Maciej Wielgosz        |
+| **Semestr:**     | zimowy 2024/2025                    |
 
----
+------------------------------------------------------------------------
 
 ## 1. Kontekst i zainteresowanie badawcze
 
@@ -31,19 +29,19 @@ Główne pytanie badawcze brzmi: **Czy i w jaki sposób ugrupowania polityczne w
 
 Pytania szczegółowe:
 
-- Jakie słowa i frazy są charakterystyczne (wyróżniające) dla poszczególnych klubów parlamentarnych?
-- Czy istnieją rozpoznawalne „słowniki partyjne" — zestawy terminów używanych niemal wyłącznie przez dane ugrupowanie?
-- Jakie tematy dominują w komunikacji poszczególnych partii (analiza tematyczna)?
-- Czy partie opozycyjne i rządzące różnią się stylem komunikacji (np. długość wypowiedzi, złożoność składniowa, emocjonalność)?
-- Jak rozkłada się aktywność komunikacyjna w czasie i w relacji do adresatów/tematów?
-- **Czy profil lingwistyczny partii różni się między komunikacją formalną (interpelacje) a spontaniczną (wystąpienia plenarne)?**
+-   Jakie słowa i frazy są charakterystyczne (wyróżniające) dla poszczególnych klubów parlamentarnych?
+-   Czy istnieją rozpoznawalne „słowniki partyjne" — zestawy terminów używanych niemal wyłącznie przez dane ugrupowanie?
+-   Jakie tematy dominują w komunikacji poszczególnych partii (analiza tematyczna)?
+-   Czy partie opozycyjne i rządzące różnią się stylem komunikacji (np. długość wypowiedzi, złożoność składniowa, emocjonalność)?
+-   Jak rozkłada się aktywność komunikacyjna w czasie i w relacji do adresatów/tematów?
+-   **Czy profil lingwistyczny partii różni się między komunikacją formalną (interpelacje) a spontaniczną (wystąpienia plenarne)?**
 
 ## 3. Cel projektu
 
 Celem projektu jest stworzenie kompleksowej analizy porównawczej języka politycznego polskich ugrupowań parlamentarnych, zwieńczonej:
 
-1. **Raportem analitycznym** — dokument zawierający wyniki analiz statystycznych i wizualizacje wraz z interpretacją.
-2. **Interaktywną aplikacją Shiny** — narzędzie umożliwiające eksplorację danych: filtrowanie po partii, czasie, temacie, typie źródła; generowanie wykresów porównawczych; wyszukiwanie słów kluczowych.
+1.  **Raportem analitycznym** — dokument zawierający wyniki analiz statystycznych i wizualizacje wraz z interpretacją.
+2.  **Interaktywną aplikacją Shiny** — narzędzie umożliwiające eksplorację danych: filtrowanie po partii, czasie, temacie, typie źródła; generowanie wykresów porównawczych; wyszukiwanie słów kluczowych.
 
 ## 4. Dane wejściowe (input)
 
@@ -54,7 +52,7 @@ Oficjalne API Sejmu RP (`api.sejm.gov.pl`) — w pełni otwarte, bezpłatne, bez
 Projekt wykorzystuje **dwa komplementarne źródła tekstowe**:
 
 | Źródło | Endpoint API | Charakter | Funkcja w projekcie |
-|--------|--------------|-----------|---------------------|
+|----------------|----------------|----------------|-------------------------|
 | **Interpelacje poselskie** | `/sejm/term10/interpellations` | Tekst pisany, formalny, przemyślany | Analiza priorytetów tematycznych, „agendy" partii |
 | **Stenogramy posiedzeń** | `/sejm/term10/proceedings` | Tekst mówiony, spontaniczny, emocjonalny | Analiza retoryki, sentymentu, stylu komunikacji |
 
@@ -64,30 +62,22 @@ Projekt wykorzystuje **dwa komplementarne źródła tekstowe**:
 
 Interpelacja to formalny, pisemny instrument kontroli parlamentarnej. Poseł kieruje do premiera lub ministra zapytanie dotyczące spraw o „zasadniczym charakterze", przedstawiając stan faktyczny i formułując pytania. Adresat ma 21 dni na pisemną odpowiedź (art. 192 Regulaminu Sejmu).
 
-**Charakterystyka lingwistyczna:**
-- Tekst pisany, redagowany, często z udziałem asystentów
-- Język formalny, urzędowy
-- Struktura: opis problemu → pytania
-- Brak spontaniczności, niska emocjonalność
-- Tematyka: sprawy resortowe, lokalne, branżowe
+**Charakterystyka lingwistyczna:** - Tekst pisany, redagowany, często z udziałem asystentów - Język formalny, urzędowy - Struktura: opis problemu → pytania - Brak spontaniczności, niska emocjonalność - Tematyka: sprawy resortowe, lokalne, branżowe
 
-**Wartość analityczna:**
-- Pokazuje **priorytety tematyczne** partii (o co pytają?)
-- Ujawnia **relacje z resortami** (które ministerstwa są „atakowane"?)
-- Pozwala badać **asymetrię opozycja–rząd** (kto pyta więcej?)
+**Wartość analityczna:** - Pokazuje **priorytety tematyczne** partii (o co pytają?) - Ujawnia **relacje z resortami** (które ministerstwa są „atakowane"?) - Pozwala badać **asymetrię opozycja–rząd** (kto pyta więcej?)
 
-**Zakres danych:** ~5 000–10 000 dokumentów (X kadencja).
+**Zakres danych:** \~5 000–10 000 dokumentów (X kadencja).
 
 **Struktura rekordu:**
 
-| Pole | Opis |
-|------|------|
-| `title` | Tytuł interpelacji |
-| `bodyHTML` | Treść interpelacji (HTML → czysty tekst) |
-| `from` | Numer legitymacji posła (mapowanie na klub) |
-| `to` | Adresat (ministerstwo/urząd) |
-| `sentDate` | Data wysłania |
-| `receiptDate` | Data wpływu odpowiedzi |
+| Pole          | Opis                                        |
+|---------------|---------------------------------------------|
+| `title`       | Tytuł interpelacji                          |
+| `bodyHTML`    | Treść interpelacji (HTML → czysty tekst)    |
+| `from`        | Numer legitymacji posła (mapowanie na klub) |
+| `to`          | Adresat (ministerstwo/urząd)                |
+| `sentDate`    | Data wysłania                               |
+| `receiptDate` | Data wpływu odpowiedzi                      |
 
 ### 4.3. Źródło 2: Stenogramy posiedzeń plenarnych
 
@@ -95,43 +85,34 @@ Interpelacja to formalny, pisemny instrument kontroli parlamentarnej. Poseł kie
 
 Stenogramy to pełne transkrypcje wystąpień na posiedzeniach plenarnych Sejmu. Obejmują: przemówienia posłów, wypowiedzi ministrów, oświadczenia, repliki, a także adnotacje (np. „Oklaski", „Głos z sali", „Wesołość na sali").
 
-**Charakterystyka lingwistyczna:**
-- Tekst mówiony, transkrybowany
-- Język zróżnicowany: od formalnego (expose) po potoczny (polemiki)
-- Spontaniczność, emocje, retoryka perswazyjna
-- Interakcje: przerywniki, riposty, reakcje sali
-- Tematyka: bieżąca agenda legislacyjna, wydarzenia polityczne
+**Charakterystyka lingwistyczna:** - Tekst mówiony, transkrybowany - Język zróżnicowany: od formalnego (expose) po potoczny (polemiki) - Spontaniczność, emocje, retoryka perswazyjna - Interakcje: przerywniki, riposty, reakcje sali - Tematyka: bieżąca agenda legislacyjna, wydarzenia polityczne
 
-**Wartość analityczna:**
-- Pokazuje **styl retoryczny** partii (jak mówią?)
-- Umożliwia **analizę sentymentu** (emocje, ton)
-- Ujawnia **dynamikę debaty** (kto z kim polemizuje?)
-- Pozwala badać **różnice rejestrów** (język oficjalny vs. spontaniczny)
+**Wartość analityczna:** - Pokazuje **styl retoryczny** partii (jak mówią?) - Umożliwia **analizę sentymentu** (emocje, ton) - Ujawnia **dynamikę debaty** (kto z kim polemizuje?) - Pozwala badać **różnice rejestrów** (język oficjalny vs. spontaniczny)
 
-**Zakres danych:** Dziesiątki godzin nagrań/transkrypcji na posiedzenie, ~50+ posiedzeń w kadencji.
+**Zakres danych:** Dziesiątki godzin nagrań/transkrypcji na posiedzenie, \~50+ posiedzeń w kadencji.
 
 **Struktura rekordu:**
 
-| Pole | Opis |
-|------|------|
-| `number` | Numer posiedzenia |
-| `date` | Data posiedzenia |
-| `transcriptHTML` | Pełna transkrypcja (HTML) |
-| `points` | Lista punktów obrad z przypisanymi wystąpieniami |
+| Pole             | Opis                                             |
+|------------------|--------------------------------------------------|
+| `number`         | Numer posiedzenia                                |
+| `date`           | Data posiedzenia                                 |
+| `transcriptHTML` | Pełna transkrypcja (HTML)                        |
+| `points`         | Lista punktów obrad z przypisanymi wystąpieniami |
 
 ### 4.4. Analizowane ugrupowania
 
-* Prawo i Sprawiedliwość
-* Koalicja Obywatelska
-* Konfederacja
-* Brauniści
-* Trzecia Droga
-  - Polska2050
-  - Polskie Stronnictwo Ludowe
-* Nowa Lewica
-* Razem
+-   Prawo i Sprawiedliwość
+-   Koalicja Obywatelska
+-   Konfederacja
+-   Brauniści
+-   Trzecia Droga
+    -   Polska2050
+    -   Polskie Stronnictwo Ludowe
+-   Nowa Lewica
+-   Razem
 
----
+------------------------------------------------------------------------
 
 ## 5. Uzasadnienie metodologiczne: dlaczego te źródła?
 
@@ -140,10 +121,10 @@ Stenogramy to pełne transkrypcje wystąpień na posiedzeniach plenarnych Sejmu.
 Potencjalnym źródłem danych o języku politycznym są media społecznościowe (Twitter/X, Facebook). Poniższa tabela uzasadnia wybór API Sejmu:
 
 | Kryterium | API Sejmu | Twitter/X | Facebook |
-|-----------|-----------|-----------|----------|
-| **Dostępność API** | Bezpłatne, otwarte, bez limitów | Płatne od 2023 (~$100+/mies.), restrykcyjne limity | Brak publicznego API dla treści postów |
+|------------------|------------------|------------------|------------------|
+| **Dostępność API** | Bezpłatne, otwarte, bez limitów | Płatne od 2023 (\~\$100+/mies.), restrykcyjne limity | Brak publicznego API dla treści postów |
 | **Legalność** | Dane publiczne, pełna legalność | Scraping łamie ToS, ryzyko prawne | Scraping łamie ToS |
-| **Kompletność** | 100% posłów, 100% dokumentów | Tylko posłowie z aktywnymi kontami (~60-70%) | Niekompletne, zróżnicowana aktywność |
+| **Kompletność** | 100% posłów, 100% dokumentów | Tylko posłowie z aktywnymi kontami (\~60-70%) | Niekompletne, zróżnicowana aktywność |
 | **Reprezentatywność** | Oficjalna komunikacja parlamentarna | Komunikacja PR, często przez zespoły | Głównie content marketingowy |
 | **Stabilność źródła** | Gwarantowana przez Kancelarię Sejmu | API zmieniało się wielokrotnie (2023: zamknięcie darmowego dostępu) | Ciągłe zmiany polityki dostępu |
 | **Kontekst instytucjonalny** | Jasny: interpelacje, wystąpienia plenarne | Rozmyty: kampania, komentarze, memy | Rozmyty |
@@ -157,7 +138,7 @@ Potencjalnym źródłem danych o języku politycznym są media społecznościowe
 Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uchwycenie różnych wymiarów komunikacji politycznej:
 
 | Wymiar | Interpelacje | Stenogramy |
-|--------|--------------|------------|
+|------------------|-----------------------------|-------------------------|
 | **Rejestr językowy** | Formalny, pisany | Zróżnicowany, mówiony |
 | **Spontaniczność** | Niska (tekst redagowany) | Wysoka (odpowiedzi ad hoc) |
 | **Emocjonalność** | Niska | Wysoka |
@@ -167,37 +148,37 @@ Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uc
 
 **Synergia źródeł:**
 
-1. **Weryfikacja krzyżowa**: Czy partia mówi o tym samym w interpelacjach i na mównicy?
-2. **Analiza rejestrów**: Jak zmienia się język partii w zależności od kontekstu (formalny vs. spontaniczny)?
-3. **Pełniejszy obraz**: Interpelacje pokazują „co" (tematy), stenogramy — „jak" (retoryka).
+1.  **Weryfikacja krzyżowa**: Czy partia mówi o tym samym w interpelacjach i na mównicy?
+2.  **Analiza rejestrów**: Jak zmienia się język partii w zależności od kontekstu (formalny vs. spontaniczny)?
+3.  **Pełniejszy obraz**: Interpelacje pokazują „co" (tematy), stenogramy — „jak" (retoryka).
 
 ### 5.3. Ograniczenia i zagrożenia dla trafności
 
 | Ograniczenie | Wpływ | Mitygacja |
-|--------------|-------|-----------|
+|-------------------------------|------------------|------------------------|
 | **Interpelacje często pisane przez asystentów** | Język może nie odzwierciedlać indywidualnego stylu posła | Agregacja na poziomie partii, nie posła |
 | **Stenogramy wymagają segmentacji** | Trudność przypisania wypowiedzi do posła | Wykorzystanie znaczników HTML z API |
 | **Nierówna aktywność posłów** | Niektórzy mówią więcej | Normalizacja (tf-idf, proporcje) |
-| **Kadencja trwa ~1 rok** | Ograniczona możliwość analizy trendów czasowych | Skupienie na porównaniach między partiami |
+| **Kadencja trwa \~1 rok** | Ograniczona możliwość analizy trendów czasowych | Skupienie na porównaniach między partiami |
 | **Brak danych z mediów społecznościowych** | Utrata wymiaru „nieformalnego" | Stenogramy częściowo kompensują (spontaniczność) |
 
 ### 5.4. Alternatywne źródła — dlaczego odrzucone?
 
 | Źródło | Powód odrzucenia |
-|--------|------------------|
+|-----------------------|-------------------------------------------------|
 | **Twitter/X** | Płatne API, niekompletność, problemy prawne |
 | **Facebook** | Brak API, scraping nielegalny |
 | **Wywiady medialne** | Brak ustrukturyzowanego źródła, trudność agregacji |
 | **Programy partyjne** | Za mało danych (1 dokument/partia/wybory), brak dynamiki czasowej |
 | **Druki sejmowe** | Język prawniczy, często identyczny między partiami (projekty rządowe) |
 
----
+------------------------------------------------------------------------
 
 ## 6. Metodologia i narzędzia
 
 ### 6.1. Pipeline przetwarzania
 
-```
+```         
 ┌─────────────────────────────────────────────────────────────────┐
 │ 1. POZYSKANIE DANYCH                                            │
 │    API Sejmu → JSON → DataFrame                                 │
@@ -240,23 +221,23 @@ Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uc
 
 ### 6.2. Narzędzia techniczne
 
-| Zadanie | Pakiety R |
-|---------|-----------|
-| Pobieranie danych | `httr2`, `jsonlite` |
-| Przetwarzanie tekstu | `tidytext`, `quanteda`, `udpipe`, `stringr` |
-| Modelowanie tematyczne | `topicmodels`, `stm`, `LDAvis` |
-| Analiza sentymentu | `sentimentr`, `syuzhet` (z polskim słownikiem) |
-| Wizualizacja | `ggplot2`, `ggwordcloud`, `ggraph`, `plotly` |
-| Aplikacja interaktywna | `shiny`, `shinydashboard`, `DT`, `bslib` |
+| Zadanie                | Pakiety R                                      |
+|------------------------|------------------------------------------------|
+| Pobieranie danych      | `httr2`, `jsonlite`                            |
+| Przetwarzanie tekstu   | `tidytext`, `quanteda`, `udpipe`, `stringr`    |
+| Modelowanie tematyczne | `topicmodels`, `stm`, `LDAvis`                 |
+| Analiza sentymentu     | `sentimentr`, `syuzhet` (z polskim słownikiem) |
+| Wizualizacja           | `ggplot2`, `ggwordcloud`, `ggraph`, `plotly`   |
+| Aplikacja interaktywna | `shiny`, `shinydashboard`, `DT`, `bslib`       |
 
----
+------------------------------------------------------------------------
 
 ## 7. Planowane wizualizacje
 
 ### 7.1. Wizualizacje porównawcze (interpelacje + stenogramy)
 
-| # | Wizualizacja | Opis | Źródło danych |
-|---|--------------|------|---------------|
+| \# | Wizualizacja | Opis | Źródło danych |
+|--------------|----------------------|--------------|-----------------------|
 | 1 | **Chmury słów porównawcze** | Osobna chmura dla każdej partii, wielkość ∝ tf-idf | Oba |
 | 2 | **Wykres radarowy profili tematycznych** | Osie = tematy LDA, wartości = proporcja dokumentów | Oba |
 | 3 | **Heatmapa partia × ministerstwo** | Intensywność interpelowania resortów | Interpelacje |
@@ -269,67 +250,64 @@ Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uc
 
 ### 7.2. Funkcjonalności aplikacji Shiny
 
-- Wybór partii do porównania (checkboxy)
-- Filtry czasowe (date range picker)
-- Wybór źródła (interpelacje / stenogramy / oba)
-- Wyszukiwarka słów kluczowych z kontekstem (KWIC)
-- Eksport wykresów (PNG, SVG)
-- Tabela z surowymi danymi (sortowalna, filtrowalna)
+-   Wybór partii do porównania (checkboxy)
+-   Filtry czasowe (date range picker)
+-   Wybór źródła (interpelacje / stenogramy / oba)
+-   Wyszukiwarka słów kluczowych z kontekstem (KWIC)
+-   Eksport wykresów (PNG, SVG)
+-   Tabela z surowymi danymi (sortowalna, filtrowalna)
 
----
+------------------------------------------------------------------------
 
 ## 8. Potencjalne wnioski (hipotezy do weryfikacji)
 
 ### 8.1. Hipotezy dotyczące różnic między partiami
 
-- **H1**: Partie opozycyjne (PiS, Konfederacja) składają więcej interpelacji niż partie rządzące (efekt asymetrii opozycja–rząd).
+-   **H1**: Partie opozycyjne (PiS, Konfederacja) składają więcej interpelacji niż partie rządzące (efekt asymetrii opozycja–rząd).
 
-- **H2**: PiS najczęściej używa słów z pola semantycznego „bezpieczeństwo", „granica", „suwerenność"; KO — „praworządność", „demokracja", „Europa".
+-   **H2**: PiS najczęściej używa słów z pola semantycznego „bezpieczeństwo", „granica", „suwerenność"; KO — „praworządność", „demokracja", „Europa".
 
-- **H3**: Konfederacja ma najbardziej wyróżniający się profil lingwistyczny (największa odległość od centroidu wszystkich partii w przestrzeni tf-idf).
+-   **H3**: Konfederacja ma najbardziej wyróżniający się profil lingwistyczny (największa odległość od centroidu wszystkich partii w przestrzeni tf-idf).
 
-- **H4**: Partia Razem jako jedyna regularnie używa terminologii ekonomii heterodoksyjnej (np. „redystrybucja", „nierówności", „kapitał", „praca").
+-   **H4**: Partia Razem jako jedyna regularnie używa terminologii ekonomii heterodoksyjnej (np. „redystrybucja", „nierówności", „kapitał", „praca").
 
-- **H5**: Istnieje korelacja między pozycją na osi lewica–prawica a profilem tematycznym (np. lewica → tematy socjalne; prawica → bezpieczeństwo).
+-   **H5**: Istnieje korelacja między pozycją na osi lewica–prawica a profilem tematycznym (np. lewica → tematy socjalne; prawica → bezpieczeństwo).
 
 ### 8.2. Hipotezy dotyczące różnic między źródłami
 
-- **H6**: Sentyment wypowiedzi w stenogramach jest bardziej zróżnicowany (wyższa wariancja) niż w interpelacjach.
+-   **H6**: Sentyment wypowiedzi w stenogramach jest bardziej zróżnicowany (wyższa wariancja) niż w interpelacjach.
 
-- **H7**: Słownictwo w interpelacjach jest bardziej techniczne/urzędowe, w stenogramach — bardziej potoczne i emocjonalne.
+-   **H7**: Słownictwo w interpelacjach jest bardziej techniczne/urzędowe, w stenogramach — bardziej potoczne i emocjonalne.
 
-- **H8**: Partie opozycyjne wykazują wyższy poziom negatywnego sentymentu w stenogramach niż partie rządzące.
+-   **H8**: Partie opozycyjne wykazują wyższy poziom negatywnego sentymentu w stenogramach niż partie rządzące.
 
----
+------------------------------------------------------------------------
 
 ## 9. Rezultaty projektu (output)
 
-1. **Repozytorium kodu** (GitHub)
-   - Skrypty do pobierania danych
-   - Pipeline preprocessingu
-   - Kod analiz i wizualizacji
-   - Dokumentacja (README)
+1.  **Repozytorium kodu** (GitHub)
+    -   Skrypty do pobierania danych
+    -   Pipeline preprocessingu
+    -   Kod analiz i wizualizacji
+    -   Dokumentacja (README)
+2.  **Raport PDF** (\~15–20 stron)
+    -   Opis metodologii
+    -   Wyniki analiz z wizualizacjami
+    -   Interpretacja i wnioski
+    -   Dyskusja ograniczeń
+3.  **Aplikacja Shiny**
+    -   Wdrożona na `shinyapps.io` lub prezentowana lokalnie
+    -   Interaktywna eksploracja danych
+4.  **Zbiór danych** (CSV/RDS)
+    -   Oczyszczone interpelacje i stenogramy
+    -   Potencjalnie do dalszych badań (open data)
 
-2. **Raport PDF** (~15–20 stron)
-   - Opis metodologii
-   - Wyniki analiz z wizualizacjami
-   - Interpretacja i wnioski
-   - Dyskusja ograniczeń
-
-3. **Aplikacja Shiny**
-   - Wdrożona na `shinyapps.io` lub prezentowana lokalnie
-   - Interaktywna eksploracja danych
-
-4. **Zbiór danych** (CSV/RDS)
-   - Oczyszczone interpelacje i stenogramy
-   - Potencjalnie do dalszych badań (open data)
-
----
+------------------------------------------------------------------------
 
 ## 10. Harmonogram realizacji
 
 | Tydzień | Daty | Zadania |
-|---------|------|---------|
+|---------------------------|------------------|---------------------------|
 | 1 | 16–22.12 | Pobranie danych z API (interpelacje + stenogramy), eksploracja struktury, mapowanie posłów→partie |
 | 2 | 23–29.12 | Preprocessing tekstu, lematyzacja, segmentacja stenogramów |
 | 3 | 30.12–05.01 | Analiza tf-idf, pierwsze wizualizacje porównawcze |
@@ -337,4 +315,4 @@ Wykorzystanie dwóch źródeł pozwala na **triangulację metodologiczną** i uc
 | 5 | 13–19.01 | Budowa aplikacji Shiny, integracja wykresów |
 | 6 | 20–26.01 | Redakcja raportu, dokumentacja, testy, poprawki |
 
----
+------------------------------------------------------------------------
