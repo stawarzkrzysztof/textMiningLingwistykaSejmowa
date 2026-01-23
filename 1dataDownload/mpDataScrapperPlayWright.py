@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Human-behavior-ish scraper for Sejm 10th-term MP pages (posel.xsp?id=001&type=A ... 460).
+Human-behavior-ish scraper for Sejm 10th-term MP pages (posel.xsp?id=001&type=A ... 498).
 
 Scrapes:
 - name (top header),
 - "Staż parlamentarny:",
 - "Ukończona szkoła:"
 
-Outputs: 1.json, 2.json, ... 460.json
+Outputs: 1.json, 2.json, ... 498.json
 
 Notes:
 - sejm.gov.pl may show an anti-bot verification page. This script tries to minimize
@@ -227,7 +227,7 @@ def main() -> int:
         help="Output directory for JSON files.",
     )
     ap.add_argument("--start", type=int, default=1)
-    ap.add_argument("--end", type=int, default=460)
+    ap.add_argument("--end", type=int, default=498)
     ap.add_argument(
         "--profile-dir",
         default="pw_profile_sejm10",
