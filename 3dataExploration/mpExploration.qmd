@@ -4,7 +4,6 @@ format:
   html:
     toc: true
     number-sections: true
-    css: styles.css
     code-tools: true
     code-fold: true
 execute:
@@ -15,8 +14,9 @@ execute:
 
 ```{r}
 #| code-summary: "Setup"
-library("tidyverse")
-library("plotly")
+library(tidyverse)
+library(plotly)
+library(gt)
 
 df <- read.csv("../2dataPreprocessing/dataPreprocessed/mp.csv", na.strings = c(""))
 
@@ -81,19 +81,78 @@ club_palette[names(club_palette_core)] <- club_palette_core[names(club_palette_c
 Zgodnie z art. 96 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483)[^konst460] polski Sejm składa się z **460** posłów. Zgodnie z art. 98 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483)[^konst4lata] sejmowi posłowie wybierani są na **czteroletnie kadencje**. W trakcie tych lat w polityce dzieją się rzeczy różne - poza wyborami parlamentarnymi odbywają się również wybory do europarlamentu czy też wybory prezydenckie. Nierzadko więc posłowie obejmują inne stanowiska i pozycje, lub z innych przyczyn nie mogą wypełnić swojego czteroletniego mandatu. W sytuacjach takich, zgodnie z art. 251 § 1–3 ustawy z dnia 5 stycznia 2011 r. – Kodeks wyborczy[^kodWybMandat], mandat przypada kolejnemu kandydatowi z tej samej listy wyborczej w tym samym okręgu wyborczym, który uzyskał następno najwyższą liczbę głosów w wyborach (o ile nie zachodzą przeszkody prawne do objęcia mandatu lub kandydat nie zrzeknie się pierwszeństwa).  
     
 ```{r}
-#| code-summary: "Czy poseł jest aktywny?"
+#| code-summary: "Liczba aktywnych i nieaktywnych posłów w bazie danych (stan na 11 stycznia 2026)"
 df |> 
   summarize(
     aktywny = sum(czyAktywny),
     nieaktywny = sum(!czyAktywny),
-    wSumie = n()
-  )
+    suma = n()) |> 
+  gt() |>
+  cols_align(align = "center", columns = everything()) |> 
+  tab_options(
+    table.width = pct(100),
+    table.layout = "fixed",
+    table.font.size = px(10))
 ```  
   
+
+```{r}
+#| code-summary: "Aktywni posłowie X kadencji wg klubów"
+#| fig-height: 4
+df |>
+  filter(czyAktywny) |>
+  count(klub, name = "n") |>
+  mutate(klub = forcats::fct_reorder(klub, n, .desc = TRUE)) |> 
+  ggplot()+
+  aes(x = fct_infreq(klub), y = n, fill = klub) +
+  geom_col(width = .5) +
+  geom_text(aes(label = n, colour = klub), vjust = -0.4, show.legend = FALSE) +
+  geom_text(aes(label = klub, colour = klub), y = -3, vjust = 1, show.legend = FALSE, size=2.5)  +
+  scale_fill_manual(values = club_palette_core) +
+  scale_colour_manual(values = club_palette_core, guide = "none") +
+  scale_y_continuous(limits = c(-1, 200), breaks = seq(0, 200, 20)) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(linetype = "dotted", alpha = .7),
+    axis.text.y = element_text(colour = "lightgrey"),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),   
+    axis.ticks.x = element_blank(),
+    legend.position = "none"
+  )
+```
+
+
 W trakcie trwania X kadencji sejmu – od 13 listopada 2023 r. do dnia pobrania danych z API Sejmu oraz strony Sejmu[^stronaSejmu], tj. do 11 stycznia 2026 r. sytuacji, w których poseł przestał być aktywny i został zastąpiony było **38**. Oznacza to, że w sejmowej bazie danych widnieje **498** posłów – z czego **460** posłów aktywnych i **38** posłów nieaktywnych.
 
 ```{r}
-#| code-summary: "Przyczyny nieaktywności 38 posłów X kadencji z podziałem na kluby"
+#| code-summary: "Nieaktywni posłowie (38) X kadencji wg klubów"
+#| fig-height: 4
+df |>
+  filter(!czyAktywny) |>
+  count(klub, name = "n") |>
+  mutate(klub = forcats::fct_reorder(klub, n, .desc = TRUE)) |> 
+  ggplot()+
+  aes(x = fct_infreq(klub), y = n, fill = klub) +
+  geom_col(width = .5) +
+  geom_text(aes(label = n, colour = klub), vjust = -0.4, show.legend = FALSE) +
+  geom_text(aes(label = klub, colour = klub), y = -0.6, vjust = 1, show.legend = FALSE) +
+  scale_fill_manual(values = club_palette_core) +
+  scale_colour_manual(values = club_palette_core, guide = "none") +
+  scale_y_continuous(limits = c(-1, 19), breaks = seq(0, 19, 1)) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(linetype = "dotted", alpha = .7),
+    axis.text.y = element_text(colour = "lightgrey"),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),   
+    axis.ticks.x = element_blank(),
+    legend.position = "none"
+  )
+```
+
+```{r}
+#| code-summary: "Przyczyny nieaktywności 38 posłów X kadencji wg klubów"
 #| fig-height: 3
 pos <- position_dodge2(width = 1, preserve = "single")
 
@@ -105,32 +164,124 @@ df |>
       "Objęcie funkcji w samorządzie",
       "Objęcie funkcji w administracji centralnej",
       "Mandat w Parlamencie Europejskim")),
-    klub = factor(klub, levels = c("PSL","Polska2050","Konfederacja","Lewica","PiS","KO"))) |>
+    klub = factor(klub, levels = c("PSL","Polska2050","Lewica", "Konfederacja", "PiS","KO"))) |>
   filter(!czyAktywny) |>
   count(nieaktywnoscKategoria, klub, name = "n") |>
   ggplot(aes(y = nieaktywnoscKategoria, x = n, fill = klub)) +
-  geom_col(width = 1, position = pos) +
+  geom_col(width = 1, position = pos, alpha = 1) +
   geom_text(
     aes(label = paste0(as.character(klub), " (", n, ")"), colour = klub),
     position = pos,
     hjust = -0.1,
-    size = 2.25,
-    show.legend = FALSE) +
+    size = 2,
+    show.legend = FALSE,
+    alpha = 1) +
   scale_x_continuous(breaks = seq(0, 14, by = 1), limits = c(0, 14)) +
   scale_fill_manual(values = club_palette_core) +
   scale_colour_manual(values = club_palette_core, guide = "none") +
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank(),
+    axis.title = element_blank(),
     axis.text.x = element_text(colour = "lightgrey"),
     axis.text.y = element_text(colour = "black"),
     legend.position = "none")
 ```
 
+```{r}
+#| code-summary: "Nieaktywni posłowie X kadencji, którzy nie otrzymali mandatu w PE"
 
+tab <- df |>
+  filter(!czyAktywny, nieaktywnoscKategoria != "Mandat w Parlamencie Europejskim") |>
+  select(imieNazwisko, klub, nieaktywnoscKategoria, nieaktywnoscKomentarz) |>
+  arrange(nieaktywnoscKategoria)
 
+gt_tbl <- tab |>
+  gt() |>
+  cols_align(align = "center", columns = everything()) |>
+  tab_options(
+    table.width = pct(100),
+    table.layout = "fixed",
+    table.font.size = px(10),
+    data_row.padding = px(5)) |>
+  tab_style(
+    style = cell_text(whitespace = "normal"),
+    locations = cells_body())
+
+for (clb in intersect(unique(tab$klub), names(club_palette_core))) {
+  gt_tbl <- gt_tbl |>
+    tab_style(
+      style = cell_fill(color = scales::alpha(club_palette_core[[clb]], 0.2)),
+      locations = cells_body(rows = klub == clb))}
+
+gt_tbl
+```
+
+# Demografia Sejmu
+## Wiek
+
+```{r}
+#| code-summary: "Rozkłady wieku aktywnych posłów X kadencji wg klubów -- sortowanie rosnące wg mediany"
+#| fig-height: 6
+
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+df2 <- df |>
+  filter(!is.na(wiek), !is.na(klub), czyAktywny) |>
+  mutate(klub = forcats::fct_reorder(klub, wiek, median, .desc = TRUE))
+
+lab_df <- df2 |>
+  count(klub, name = "n") |>
+  mutate(label = paste0(as.character(klub), "  (n=", n, ")"))
+
+med_df <- df2 |>
+  group_by(klub) |>
+  summarise(med = median(wiek, na.rm = TRUE), .groups = "drop")
+
+x_min <- min(df2$wiek, na.rm = TRUE)
+x_max <- max(df2$wiek, na.rm = TRUE)
+
+ggplot(df2, aes(x = wiek, y = klub, fill = klub)) +
+  geom_violin(trim = FALSE, alpha = 0.25, color = NA) +
+  geom_boxplot(width = 0.18, outlier.shape = NA, alpha = 0.35) +
+  geom_text(
+    data = med_df,
+    aes(x = med + 0.6, y = klub, label = round(med, 1), color = klub),
+    inherit.aes = FALSE,
+    vjust = -1.15,
+    hjust = .85,
+    size = 3,
+    show.legend = FALSE,
+
+  ) +
+  geom_jitter(aes(color = klub), height = 0.12, width = 0, alpha = 0.45, size = 1.3, show.legend = FALSE) +
+  geom_text(
+    data = lab_df,
+    aes(x = x_min - 1.75, y = klub, label = label, color = klub),
+    inherit.aes = FALSE,
+    hjust = 1,
+    size = 3.5,
+    show.legend = FALSE
+  ) +
+  scale_fill_manual(values = club_palette_core) +
+  scale_color_manual(values = club_palette_core, guide = "none") +
+  coord_cartesian(xlim = c(x_min - 8, x_max + 2), clip = "off") +
+  scale_x_continuous(breaks = seq(25, 85, by = 5)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    plot.margin = margin(5.5, 5.5, 5.5, 40),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
+    axis.text.x = element_text(color="lightgrey")
+  )
+```
 
 
 
