@@ -1,0 +1,143 @@
+---
+title: "Posłowie - 11.01.2026"
+format: 
+  html:
+    toc: true
+    number-sections: true
+    css: styles.css
+    code-tools: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| code-summary: "Setup"
+library("tidyverse")
+library("plotly")
+
+df <- read.csv("../2dataPreprocessing/dataPreprocessed/mp.csv", na.strings = c(""))
+
+df <- df |>
+  mutate(
+    klub = as.factor(klub),
+    dataUr = as.Date(dataUr),
+    plec = as.factor(plec),
+    wyksztalcenie = as.factor(wyksztalcenie),
+    najwyzszyStopienNaukowy = as.factor(najwyzszyStopienNaukowy),
+    czyAktywny = as.logical(czyAktywny)
+  )
+
+knitr::opts_chunk$set(
+  fig.width  = 8,        
+  # fig.asp    = 0.62,     
+  dpi        = 320,      
+  fig.retina = 2,        
+  fig.align  = "center",
+  out.width  = "100%"    
+)
+
+# okabe_ito <- c(
+#   "#E69F00", "#56B4E9", "#009E73", "#F0E442",
+#   "#0072B2", "#D55E00", "#CC79A7", "#000000"
+# )
+
+# # options(
+# #   ggplot2.discrete.colour = okabe_ito,
+# #   ggplot2.discrete.fill   = okabe_ito
+# # )
+
+theme_set(
+  theme_minimal(base_size = 12, base_family = "sans") +
+    theme(
+      plot.title.position   = "plot",
+      plot.caption.position = "plot",
+      panel.grid.minor      = element_blank(),
+      legend.position       = "right"
+    )
+)
+
+clubs <- read.csv("../2dataPreprocessing/dataPreprocessed/clubs.csv", na.strings = c(""))
+club_palette_core <- c(
+  "KO"              = "#FF7F2A",
+  "PiS"             = "#073A76",
+  "PSL"             = "#30D397",
+  "Polska2050"      = "#FFC302",
+  "Lewica"          = "#DD0201",
+  "Razem"           = "#870E57",
+  "Konfederacja"    = "#16355B",
+  "Konfederacja_KP" = "#D01626",
+  "Republikanie"    = "#134068",
+  "niez."           = "#7A7A7A"
+)
+all_ids <- clubs |> dplyr::distinct(id) |> dplyr::pull(id)
+club_palette <- stats::setNames(rep("#7A7A7A", length(all_ids)), all_ids)
+club_palette[names(club_palette_core)] <- club_palette_core[names(club_palette_core)]
+```
+
+# Skład i rotacja
+Zgodnie z art. 96 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483)[^konst460] polski Sejm składa się z **460** posłów. Zgodnie z art. 98 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483)[^konst4lata] sejmowi posłowie wybierani są na **czteroletnie kadencje**. W trakcie tych lat w polityce dzieją się rzeczy różne - poza wyborami parlamentarnymi odbywają się również wybory do europarlamentu czy też wybory prezydenckie. Nierzadko więc posłowie obejmują inne stanowiska i pozycje, lub z innych przyczyn nie mogą wypełnić swojego czteroletniego mandatu. W sytuacjach takich, zgodnie z art. 251 § 1–3 ustawy z dnia 5 stycznia 2011 r. – Kodeks wyborczy[^kodWybMandat], mandat przypada kolejnemu kandydatowi z tej samej listy wyborczej w tym samym okręgu wyborczym, który uzyskał następno najwyższą liczbę głosów w wyborach (o ile nie zachodzą przeszkody prawne do objęcia mandatu lub kandydat nie zrzeknie się pierwszeństwa).  
+    
+```{r}
+#| code-summary: "Czy poseł jest aktywny?"
+df |> 
+  summarize(
+    aktywny = sum(czyAktywny),
+    nieaktywny = sum(!czyAktywny),
+    wSumie = n()
+  )
+```  
+  
+W trakcie trwania X kadencji sejmu – od 13 listopada 2023 r. do dnia pobrania danych z API Sejmu oraz strony Sejmu[^stronaSejmu], tj. do 11 stycznia 2026 r. sytuacji, w których poseł przestał być aktywny i został zastąpiony było **38**. Oznacza to, że w sejmowej bazie danych widnieje **498** posłów – z czego **460** posłów aktywnych i **38** posłów nieaktywnych.
+
+```{r}
+#| code-summary: "Przyczyny nieaktywności 38 posłów X kadencji z podziałem na kluby"
+#| fig-height: 3
+pos <- position_dodge2(width = 1, preserve = "single")
+
+df |>
+  mutate(
+    nieaktywnoscKategoria = factor(nieaktywnoscKategoria, levels = c(
+      "Zgon",
+      "Utrata prawa wybieralności",
+      "Objęcie funkcji w samorządzie",
+      "Objęcie funkcji w administracji centralnej",
+      "Mandat w Parlamencie Europejskim")),
+    klub = factor(klub, levels = c("PSL","Polska2050","Konfederacja","Lewica","PiS","KO"))) |>
+  filter(!czyAktywny) |>
+  count(nieaktywnoscKategoria, klub, name = "n") |>
+  ggplot(aes(y = nieaktywnoscKategoria, x = n, fill = klub)) +
+  geom_col(width = 1, position = pos) +
+  geom_text(
+    aes(label = paste0(as.character(klub), " (", n, ")"), colour = klub),
+    position = pos,
+    hjust = -0.1,
+    size = 2.25,
+    show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(0, 14, by = 1), limits = c(0, 14)) +
+  scale_fill_manual(values = club_palette_core) +
+  scale_colour_manual(values = club_palette_core, guide = "none") +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(colour = "lightgrey"),
+    axis.text.y = element_text(colour = "black"),
+    legend.position = "none")
+```
+
+
+
+
+
+
+[^konst460]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 96 ust. 1](https://www.sejm.gov.pl/prawo/konst/polski/4.htm#:~:text=Sejm%20składa%20się%20z%20460%20posłów)
+
+[^konst4lata]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 98 ust. 1](https://www.sejm.gov.pl/prawo/konst/polski/4.htm#:~:text=Sejm%20i%20Senat%20są%20wybierane,zebrania%20się%20Sejmu%20następnej%20kadencji.) 
+
+[^kodWybMandat]: [Ustawa z dnia 5 stycznia 2011 r. – Kodeks wyborczy (Dz.U. 2011 nr 21 poz. 112 z późn. zm.), art. 251 § 1–3](https://arslege.pl/obsadzenie-mandatu-posla-w-trakcie-kadencji-sejmu/k510/a43080/)
+
+[^stronaSejmu]: [https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp?type=A](https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp?type=A)
