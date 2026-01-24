@@ -1,6 +1,7 @@
 data/
 dataDownload/data
 .venv/
+.venv-rjupyter/
 dataDownload/.venv
 __pycache__/
 *.pyc
