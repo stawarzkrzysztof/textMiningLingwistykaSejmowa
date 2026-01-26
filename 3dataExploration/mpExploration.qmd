@@ -35,12 +35,17 @@ library(gt)
 
 df <- read.csv("../2dataPreprocessing/dataPreprocessed/mp.csv", na.strings = c(""))
 
+
+
 df <- df |>
   mutate(
     klub = as.factor(klub),
     dataUr = as.Date(dataUr),
     plec = as.factor(plec),
-    wyksztalcenie = as.factor(wyksztalcenie),
+    wyksztalcenie = if_else(
+      wyksztalcenie == "('średnie ogólne',)",
+      "średnie ogólne",
+      as.character(wyksztalcenie)) |> as.factor(),
     najwyzszyStopienNaukowy = as.factor(najwyzszyStopienNaukowy),
     czyAktywny = as.logical(czyAktywny)
   )
@@ -76,16 +81,16 @@ theme_set(
 
 clubs <- read.csv("../2dataPreprocessing/dataPreprocessed/clubs.csv", na.strings = c(""))
 club_palette_core <- c(
-  "KO"              = "#FF7F2A",
   "PiS"             = "#012B7F",
+  "KO"              = "#FF7F2A",
   "PSL"             = "#30D397",
   "Polska2050"      = "#FFC302",
   "Lewica"          = "#D62943",
-  "Razem"           = "#870E57",
   "Konfederacja"    = "#153560",
-  "Konfederacja_KP" = "#A27819",
+  "niez."           = "#7A7A7A",
+  "Razem"           = "#870E57",
   "Republikanie"    = "#15233F",
-  "niez."           = "#7A7A7A"
+  "Konfederacja_KP" = "#A27819"
 )
 
 sex_palette <- c(
@@ -879,6 +884,141 @@ ggplot(share_df, aes(x = prop, y = klub, fill = plec)) +
 Struktura płci wśród aktywnych posłów X kadencji pozostaje wyraźnie asymetryczna: mężczyźni stanowią ok. 68,5% składu (315 osób), a kobiety 31,5% (145), co potwierdza, że mimo formalnych mechanizmów równościowych reprezentacja kobiet wciąż nie osiąga poziomu „równowagi” demograficznej. Ciekawe spostrzeżenie wyłania się, gdy spojrzymy na rozkład płci w poszczególnych klubach -- jeśli posortujemy malejąco względem odsetka kobiet w ugrupowaniu, dostaniemy wręcz ,,wzorcowy" podział światopoglądowy od lewicy, przez bliżej niezdefiniowane centrum, liberałów, centroprawicę aż do skrajnej prawicy. Może to sugerować, iż obserwowana nierównowaga wynika z odmiennych strategii rekrutacyjnych, profili elektoratu i wewnętrznych praktyk organizacyjnych. W efekcie, agregatowy wynik dla całego Sejmu maskuje istotną polaryzację: część klubów „ciągnie” średnią w stronę większej reprezentacji kobiet, podczas gdy inne utrzymują skład niemal wyłącznie męski -- a to ma konsekwencje dla tego, jak reprezentacja społeczna jest rozłożona w ramach realnych bloków głosowań i koalicji.
 
 ## Miejsca urodzenia 
+
+```{r}
+#| code-summary: "Miejscowości, w których urodziło się przynajmniej 5 posłów X kadencji"
+#| label: miastaUrBarChart
+
+df |> 
+  group_by(miejsceUr) |> 
+  summarize(liczba = n()) |> 
+  filter(liczba>=5) |> 
+  arrange(desc(liczba)) |>  
+  # head(20) |> 
+  ggplot() +
+  aes(x=reorder(miejsceUr, liczba), y=liczba) +
+  geom_col(fill="#56B4E9") +
+  geom_text(aes(label = liczba), hjust = -0.35, color="#56B4E9", size = 4) +
+  scale_y_continuous(breaks=seq(0, 40, by=2), limits=c(0, 42)) +
+  coord_flip() +
+  theme(
+    axis.title = element_blank(),
+    axis.text.y      = element_text(color = "black", margin = margin(r = -17, unit = "pt")),
+    axis.text.y.left = element_text(color = "black", margin = margin(r = -17, unit = "pt")),
+    axis.ticks.length.y = unit(0, "pt"),
+    axis.text.x = element_text(color = "lightgray"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", color = "lightgray")
+  )
+```
+
+
+## Edukacja
+```{r}
+df |>
+  filter(czyAktywny) |>
+  count(wyksztalcenie, name = "liczba") |>
+  ggplot(aes(x = reorder(wyksztalcenie, desc(liczba)), y = liczba)) +
+  geom_col(fill = "#56B4E9", width = .5) +
+  geom_text(aes(label = liczba), vjust = -0.35, color = "#56B4E9", size = 5) +
+  scale_y_continuous(breaks = seq(0, 450, by = 25), limits = c(0, 450)) +
+  theme(
+    axis.title = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(linetype = "dotted", color = "lightgray"),
+    axis.text.y = element_text(color = "lightgrey"),
+    # TO DZIAŁA: podnosi etykiety osi X (bliżej panelu/słupków)
+    axis.ticks.length = grid::unit(-10, "mm"),
+    # żeby nie rozwalić osi Y (opcjonalnie)
+    axis.ticks.length.y = grid::unit(100, "mm"),
+    axis.text.x = element_text(color = "black")
+  )
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(forcats)
+library(scales)
+
+deg_bins <- df |>
+  filter(czyAktywny, wyksztalcenie == "wyższe", !is.na(najwyzszyStopienNaukowy)) |>
+  mutate(
+    kategoria = case_when(
+      najwyzszyStopienNaukowy == "profesor" ~ "profesor",
+      najwyzszyStopienNaukowy == "doktor habilitowany" ~ "doktor habilitowany",
+      najwyzszyStopienNaukowy == "doktor" ~ "doktor",
+      najwyzszyStopienNaukowy %in% c("magister", "magister inżynier") ~ "II stopień studiów (mgr/mgr inż.)",
+      najwyzszyStopienNaukowy %in% c("licencjat", "inżynier") ~ "I stopień studiów (lic./inż.)",
+      TRUE ~ "inne/zawodowe"
+    ),
+    kategoria = factor(
+      kategoria,
+      levels = c("inne/zawodowe", "I stopień studiów (lic./inż.)", "II stopień studiów (mgr/mgr inż.)", "doktor", "doktor habilitowany", "profesor")
+    )
+  ) |>
+  count(kategoria, name = "n") |>
+  mutate(p = n / sum(n))
+
+ggplot(deg_bins, aes(x = kategoria, y = n)) +
+  geom_col(fill = "#56B4E9", width = 0.7) +
+  geom_text(
+    aes(label = n),
+    hjust = -0.1, size = 4, color = "#56B4E9"
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    breaks = seq(0, 350, by=25),
+    limits = c(0, 350)) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(linetype="dotted", color="lightgray"),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(color = "black"),
+    axis.text.x = element_text(color = "lightgray")
+  )
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+levels_deg <- c("profesor","dr hab","dr","II stopień studiów","I stopień studiów","inne/zawodowe")
+
+deg_by_club <- df |>
+  filter(czyAktywny, wyksztalcenie == "wyższe", !is.na(klub)) |>
+  mutate(
+    kategoria = case_when(
+      najwyzszyStopienNaukowy == "profesor" ~ "profesor",
+      najwyzszyStopienNaukowy == "doktor habilitowany" ~ "dr hab",
+      najwyzszyStopienNaukowy == "doktor" ~ "dr",
+      najwyzszyStopienNaukowy %in% c("magister", "magister inżynier") ~ "II stopień studiów",
+      najwyzszyStopienNaukowy %in% c("licencjat", "inżynier") ~ "I stopień studiów",
+      TRUE ~ "inne/zawodowe"
+    ),
+    kategoria = factor(kategoria, levels = levels_deg)
+  ) |>
+  count(klub, kategoria, name = "n") |>
+  tidyr::complete(klub, kategoria, fill = list(n = 0))
+
+ggplot(deg_by_club, aes(x = kategoria, y = klub, fill = n)) +
+  geom_tile(color = "white", linewidth = 0.6) +
+  geom_text(aes(label = ifelse(n == 0, "", n)), size = 3) +
+  scale_fill_gradient(low = "white", high = "#56B4E9") +
+  labs(x = NULL, y = NULL, fill = "n") +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 25, hjust = 1),
+    axis.text.y = element_text(color = "black")
+  )
+#TODO: zrobic heatmape z odpowiednimi kolorkami (moze wykladniczy gradient a nie liniowy)
+```
+
 
 
 [^konst460]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 96 ust. 1](https://www.sejm.gov.pl/prawo/konst/polski/4.htm#:~:text=Sejm%20składa%20się%20z%20460%20posłów)
