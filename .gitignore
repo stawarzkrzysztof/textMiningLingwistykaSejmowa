@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
+3dataExploration/mpExploration_files/
+3dataExploration/*.html

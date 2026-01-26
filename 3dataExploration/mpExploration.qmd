@@ -2,18 +2,33 @@
 title: "Posłowie - 11.01.2026"
 format: 
   html:
-    toc: true
+    toc: false
     number-sections: true
     code-tools: true
     code-fold: true
+    html-table-processing: none
+    mainfont: Calibri
+    monofont: "Andale Mono"
+    include-in-header:
+      text: |
+        <style>
+        body {
+          font-family: Calibri, sans-serif;
+        }
+        code, pre, kbd, samp, .sourceCode, pre code {
+          font-family: "Andale Mono", monospace;
+        }
+        </style>
 execute:
   echo: true
   warning: false
   message: false
+
 ---
 
 ```{r}
 #| code-summary: "Setup"
+#| label: setup
 library(tidyverse)
 library(plotly)
 library(gt)
@@ -50,7 +65,7 @@ knitr::opts_chunk$set(
 # # )
 
 theme_set(
-  theme_minimal(base_size = 12, base_family = "sans") +
+  theme_minimal(base_size = 12, base_family = "Calibri") +
     theme(
       plot.title.position   = "plot",
       plot.caption.position = "plot",
@@ -62,19 +77,118 @@ theme_set(
 clubs <- read.csv("../2dataPreprocessing/dataPreprocessed/clubs.csv", na.strings = c(""))
 club_palette_core <- c(
   "KO"              = "#FF7F2A",
-  "PiS"             = "#073A76",
+  "PiS"             = "#012B7F",
   "PSL"             = "#30D397",
   "Polska2050"      = "#FFC302",
-  "Lewica"          = "#DD0201",
+  "Lewica"          = "#D62943",
   "Razem"           = "#870E57",
-  "Konfederacja"    = "#16355B",
-  "Konfederacja_KP" = "#D01626",
-  "Republikanie"    = "#134068",
+  "Konfederacja"    = "#153560",
+  "Konfederacja_KP" = "#A27819",
+  "Republikanie"    = "#15233F",
   "niez."           = "#7A7A7A"
 )
+
+sex_palette <- c(
+  "Kobiety"    = "#C51B7D",
+  "Mężczyźni"  = "#2C7FB8"
+)
+
 all_ids <- clubs |> dplyr::distinct(id) |> dplyr::pull(id)
 club_palette <- stats::setNames(rep("#7A7A7A", length(all_ids)), all_ids)
 club_palette[names(club_palette_core)] <- club_palette_core[names(club_palette_core)]
+# zapamiętaj oryginalną funkcję z pakietu
+gt_base <- gt::gt
+
+# nadpisz gt() w globalnym środowisku (tylko w tym dokumencie/sesji)
+gt <- function(..., id = NULL, locale = NULL, groupname_col = NULL, rowname_col = NULL) {
+  gt_base(
+    ...,
+    id = id,
+    locale = locale,
+    groupname_col = groupname_col,
+    rowname_col = rowname_col
+  ) |>
+    gt::opt_table_font(                               # <-- TU
+      font = c("Calibri", "sans-serif")
+    ) |>
+    cols_align(align = "center", columns = everything()) |>
+    tab_options(
+      table.width = pct(100),
+      table.layout = "fixed",
+      table.font.size = px(10),
+      data_row.padding = px(5)
+    ) |>
+    tab_style(
+      style = cell_text(whitespace = "normal"),
+      locations = cells_body()
+    )
+}
+
+colorRowsByClub <- function(t, pal = club_palette_core, alpha = 0.35) {
+
+  d <- gt:::dt_data_get(t)   # <-- potrójny dwukropek (wewnętrzne API)
+
+  if (!"klub" %in% names(d)) return(t)
+
+  clubs <- intersect(unique(as.character(d$klub)), names(pal))
+
+  for (clb in clubs) {
+    t <- t |>
+      gt::tab_style(
+        style = list(
+          gt::cell_fill(color = scales::alpha(pal[[clb]], alpha)),
+          gt::cell_text(color = "black")
+        ),
+        locations = gt::cells_body(rows = klub == clb)
+      )
+  }
+
+  t
+}
+
+library(ggtext)
+
+mk_labels <- function(pal) {
+  setNames(
+    sprintf("<span style='color:%s'>%s</span>", pal, names(pal)),
+    names(pal)
+  )
+}
+
+club_labels <- mk_labels(club_palette_core)
+sex_labels  <- mk_labels(sex_palette)
+
+spread_y <- function(y, min_gap) {
+  if (length(y) <= 1) return(y)
+  o <- order(y)
+  yy <- y[o]
+  for (i in 2:length(yy)) {
+    if ((yy[i] - yy[i-1]) < min_gap) yy[i] <- yy[i-1] + min_gap
+  }
+  y2 <- y
+  y2[o] <- yy
+  y2
+}
+
+make_outside_labels <- function(layout, group_col, delta_frac = 0.24, min_gap_frac = 0.10) {
+  g <- rlang::sym(group_col)
+  maxr <- max(layout$r, na.rm = TRUE)
+  delta <- delta_frac * maxr
+  min_gap <- min_gap_frac * maxr
+
+  edge <- layout |>
+    group_by(!!g) |>
+    slice_max(r, n = 1, with_ties = FALSE) |>
+    ungroup() |>
+    mutate(
+      ux = x / r, uy = y / r,
+      x_lab = x + ux * delta,
+      y_lab = y + uy * delta
+    )
+
+  edge$y_lab <- spread_y(edge$y_lab, min_gap)
+  edge
+}
 ```
 
 # Skład i rotacja
@@ -82,22 +196,19 @@ Zgodnie z art. 96 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia
     
 ```{r}
 #| code-summary: "Liczba aktywnych i nieaktywnych posłów w bazie danych (stan na 11 stycznia 2026)"
+#| label: aktywniTable
 df |> 
   summarize(
     aktywny = sum(czyAktywny),
     nieaktywny = sum(!czyAktywny),
     suma = n()) |> 
-  gt() |>
-  cols_align(align = "center", columns = everything()) |> 
-  tab_options(
-    table.width = pct(100),
-    table.layout = "fixed",
-    table.font.size = px(10))
+  gt()
 ```  
   
 
 ```{r}
 #| code-summary: "Aktywni posłowie X kadencji wg klubów"
+#| label: mandatyBarChart
 #| fig-height: 4
 df |>
   filter(czyAktywny) |>
@@ -122,11 +233,91 @@ df |>
   )
 ```
 
+```{r}
+#| code-summary: "Aktywni posłowie X kadencji wg klubów - symulacja sali sejmowej"
+#| label: parlimentMandaty
+
+library(shadowtext)
+levels_order <- c(
+  "PiS","KO","PSL","Polska2050","Lewica",
+  "Konfederacja","niez.","Razem","Republikanie","Konfederacja_KP"
+)
+
+seats <- df |>
+  filter(czyAktywny, !is.na(klub)) |>
+  count(klub, name = "seats") |>
+  mutate(party = factor(klub, levels = levels_order)) |>
+  arrange(party)
+
+layout <- ggparliament::parliament_data(
+  election_data = NULL,
+  party_seats   = seats$seats,
+  type          = "semicircle",
+  parl_rows     = 10
+)
+
+# promień (żeby w ramach tego samego kąta wypełniać rzędy spójnie)
+layout <- layout |>
+  mutate(r = sqrt(x^2 + y^2)) |>
+  arrange(desc(theta), desc(r))  # LEWA->PRAWA, a w ramach kąta: zewnątrz->środek
+
+layout$party <- rep(as.character(seats$party), seats$seats)
+library(ggtext)
+library(scales)
+
+mk_labels <- function(pal) {
+  setNames(
+    sprintf("<span style='color:%s'>%s</span>", pal, names(pal)),
+    names(pal)
+  )
+}
+club_labels <- mk_labels(club_palette_core)
+
+total_seats <- 460L
+
+party_stats <- seats |>
+  mutate(
+    party   = as.character(party),
+    pct     = seats / total_seats,
+    pct_lab = scales::percent(pct, accuracy = 1)
+  ) |>
+  select(party, pct_lab)
+
+party_pos <- layout |>
+  group_by(party) |>
+  summarise(x = mean(x), y = mean(y), .groups = "drop") |>
+  # delikatnie "na zewnątrz" żeby nie nachodziło na kropki
+  mutate(x = x * 1.05, y = y * 1.05)
+
+party_lab <- party_pos |>
+  left_join(party_stats, by = "party")
+layout$party <- factor(layout$party, levels = levels_order)
+
+ggplot(layout, aes(x, y, colour = party)) +
+  geom_point(size = 5) + 
+  shadowtext::geom_shadowtext(
+    data = party_lab,
+    aes(x = x, y = y, label = pct_lab, colour = party),
+    inherit.aes = FALSE,
+    fontface = "bold",
+    size = 3.5,                       
+    bg.colour = scales::alpha("white", 0.95), 
+    bg.r = 0.25,
+    show.legend = FALSE
+  ) +
+  coord_equal() +
+  scale_colour_manual(values = club_palette_core, limits = levels_order, name = "Klub", labels = club_labels) +
+  theme_void() +
+  theme(legend.position = "bottom", 
+  legend.title = element_blank(),
+  legend.text = ggtext::element_markdown())
+```
 
 W trakcie trwania X kadencji sejmu – od 13 listopada 2023 r. do dnia pobrania danych z API Sejmu oraz strony Sejmu[^stronaSejmu], tj. do 11 stycznia 2026 r. sytuacji, w których poseł przestał być aktywny i został zastąpiony było **38**. Oznacza to, że w sejmowej bazie danych widnieje **498** posłów – z czego **460** posłów aktywnych i **38** posłów nieaktywnych.
 
 ```{r}
-#| code-summary: "Nieaktywni posłowie (38) X kadencji wg klubów"
+#| code-summary: "Nieaktywni posłowie X kadencji wg klubów"
+#| label: nieaktywniMPbarChart
 #| fig-height: 4
 df |>
   filter(!czyAktywny) |>
@@ -152,7 +343,8 @@ df |>
 ```
 
 ```{r}
-#| code-summary: "Przyczyny nieaktywności 38 posłów X kadencji wg klubów"
+#| code-summary: "Przyczyny nieaktywności posłów X kadencji wg klubów"
+#| label: powodyNieaktywnosciBarChart
 #| fig-height: 3
 pos <- position_dodge2(width = 1, preserve = "single")
 
@@ -190,43 +382,169 @@ df |>
 
 ```{r}
 #| code-summary: "Nieaktywni posłowie X kadencji, którzy nie otrzymali mandatu w PE"
+#| label: niekatywniPoslowieTable
 
-tab <- df |>
+df |>
   filter(!czyAktywny, nieaktywnoscKategoria != "Mandat w Parlamencie Europejskim") |>
   select(imieNazwisko, klub, nieaktywnoscKategoria, nieaktywnoscKomentarz) |>
-  arrange(nieaktywnoscKategoria)
-
-gt_tbl <- tab |>
-  gt() |>
-  cols_align(align = "center", columns = everything()) |>
-  tab_options(
-    table.width = pct(100),
-    table.layout = "fixed",
-    table.font.size = px(10),
-    data_row.padding = px(5)) |>
-  tab_style(
-    style = cell_text(whitespace = "normal"),
-    locations = cells_body())
-
-for (clb in intersect(unique(tab$klub), names(club_palette_core))) {
-  gt_tbl <- gt_tbl |>
-    tab_style(
-      style = cell_fill(color = scales::alpha(club_palette_core[[clb]], 0.2)),
-      locations = cells_body(rows = klub == clb))}
-
-gt_tbl
+  arrange(nieaktywnoscKategoria) |> 
+  gt() |> 
+  colorRowsByClub()
 ```
 
 # Demografia Sejmu
 ## Wiek
 
 ```{r}
-#| code-summary: "Rozkłady wieku aktywnych posłów X kadencji wg klubów -- sortowanie rosnące wg mediany"
-#| fig-height: 6
+#| code-summary: "Statystyki deskryptywne wieku aktywnych posłów X kadencji"
+#| label: wiekOgolnieDescStatsTable
+df |>
+    filter(czyAktywny, !is.na(wiek)) |>
+    summarize(
+      posłów   = n(),
+      wiekŚrednia  = round(mean(wiek), 2),
+      wiekOdchStd  = round(sd(wiek), 2),
+      wiekMin  = min(wiek),
+      wiekQ1       = round(quantile(wiek, 0.25, na.rm = TRUE), 0),
+      wiekMediana  = round(median(wiek), 0),
+      wiekQ3       = round(quantile(wiek, 0.75, na.rm = TRUE), 0),
+      wiekMaks = max(wiek)
+    ) |> 
+      gt()
+```
 
-library(dplyr)
-library(ggplot2)
-library(forcats)
+```{r}
+#| code-summary: "Rozkład wieku aktywnych posłów X kadencji (beeswarm plot)"
+#| label: beeswarmWiekRozklad
+#| fig-height: 2
+
+df |>
+  filter(czyAktywny, !is.na(wiek)) |>
+  ggplot(aes(x = wiek, y = 1)) +
+  geom_boxplot(
+    width = 0.05, outlier.shape = NA, alpha = 0.1, color="gray50"
+  ) +
+  ggbeeswarm::geom_quasirandom(
+    width = 0.25, alpha = 0.5, size = 1.3, color="#56B4E9"
+  ) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  scale_x_continuous(breaks = seq(25, 85, by = 5), limits = c(25, 85)) +
+  labs(x="Wiek")+
+  theme(
+    axis.title.y = element_blank(),
+    # axis.title.x = element_text("Wiek", color="black"),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
+    # axis.text.x = element_text(color="lightgrey")
+  )
+```
+
+
+```{r}
+#| code-summary: "Histogram wieku aktywnych posłów (podzielony na 5-letnie koszyki)"
+#| label: wiekHist5YearBins
+#| fig-height: 3
+
+df |>
+  filter(czyAktywny, !is.na(wiek)) |>
+  ggplot(aes(x = wiek)) +
+  geom_histogram(
+    binwidth = 5,
+    boundary = 20,
+    closed   = "left",
+    fill     = "#56B4E9",
+    color    = "white",
+    linewidth = 0.4
+  ) +
+  geom_text(
+    stat = "bin",
+    binwidth = 5,
+    boundary = 20,
+    closed   = "left",
+    aes(
+      label = after_stat(ifelse(count == 0, NA, count)),
+      y     = after_stat(count)
+    ),
+    vjust = -0.35,
+    color = "#56B4E9",
+    size  = 3
+  ) +
+  scale_x_continuous(
+    breaks = seq(20, 90, by = 5),
+    limits = c(20, 90),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    breaks=seq(0, 80, by=10), limits=c(0, 80),
+    expand = expansion(mult = c(0, 0.08))
+  ) +
+  labs(x="Wiek") +
+  theme(
+    axis.title.y = element_blank(),
+    panel.grid.major.y = element_line(linetype = "dotted", alpha = .7),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
+    axis.text.y = element_text(color = "lightgrey"),
+)
+```  
+  
+Rozkład wieku aktywnych posłów ma wyraźnie „dojrzały” profil — ciężar obserwacji koncentruje się w późnych latach 40. oraz w wieku 50–60+, co sugeruje, że Sejm jest przede wszystkim instytucją kariery politycznej „środka życia”, a nie przestrzenią zdominowaną przez młodych dorosłych. Potwierdzają to miary deskryptywne: przy **n = 460** średni wiek wynosi **53.25 roku**, mediana **52**, a połowa posłów mieści się w przedziale **45–63 lat (Q1–Q3)**, co wskazuje na relatywnie stabilny „trzon” reprezentacji w wieku średnim i późno-średnim. Marginalna liczebność koszyków 25–30 i 30–35 sugeruje słabą reprezentację młodych, co można interpretować jako efekt selekcji instytucjonalnej i barier wejścia (kapitał organizacyjny, sieciowy, finansowy, rozpoznawalność) lub preferencji wyborczych wobec kandydatów postrzeganych jako „bardziej doświadczeni”. Jednocześnie średnia tylko nieznacznie przewyższająca medianę (53.25 vs 52) oraz umiarkowane zróżnicowanie wieku (**odchStd = 11.26**) sugerują brak silnej asymetrii rozkładu: obecność starszych posłów tworzy prawostronny ogon, ale nie deformuje istotnie obrazu całości. Punkty układają się w gęste, zwarte pasmo mniej więcej od końca trzydziestki do końca sześćdziesiątki, a wartości skrajne (wiek minimalny **25** i maksymalny **80**) występują incydentalnie, jako jednostkowe obserwacje. Widać też, że roczniki 70+ stanowią niewielką, lecz niezerową część składu -- co domyka rozkład jako „cienki ogon”.
+  
+Ciekawostka: wg portalu Genius, w czwartej zwrotce kawałka *BĘDĘ PREZYDENTEM :)* raper Mata nawija:  
+  
+> ,,Trzech posłów poniżej trzydziestki w sejmie -- o chuj chodzi?  
+> Jak oni nie są za starzy, my nie jesteśmy za młodzi."[^geniusMata]
+
+```{r}
+#| code-summary: "Czy faktycznie mamy w sejmie trzech posłów, którzy są poniżej 30 roku życia?"
+#| label: isMataRightBool
+df |> 
+  filter(czyAktywny, wiek<30) |> 
+  nrow() >= 3
+```
+```{r}
+#| code-summary: "Piątka najmłodszych posłów (stan na 11 stycznia 2026 r.)"
+#| label: top5YoungestMPtable
+df |> 
+  filter(czyAktywny) |> 
+  arrange(wiek, dataUr) |> 
+  head(5) |> 
+  select(imieNazwisko, klub, dataUr, wiek) |> 
+  gt() |> 
+  colorRowsByClub()
+```
+
+Okazuje się, że raper poniekąd minął się z prawdą -- zgodnie z dniem pobrania danych (11 stycznia 2026), posłów poniżej 30 roku życia w sejmie było dwoje -- Aleksandra Kot (KO; 25 lat) i Adam Gomoła (Polska2050; 26 lat). Jeśli wziąc nawet pod uwagę datę premiery numeru (25 grudnia 2025)[^geniusMata], wersy nadal nie są prawdziwe - zarówno Michał Moskal (PiS) jak i Aleksandra Karolina Uznańska-Wiśniewska (KO) mieli wtedy skończone 31 lat. Być może słowa Maty prawdziwe były w chwilii pisaina tekstu, jednak nie były aktualne już w dniu jego publikacji.  
+    
+Co do wersu o ,,nie byciu za młodym" -- Mata ma tutaj racje: zgodnie z art. 99 ust. 1 Konstytucji Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483) ,,wybrany do Sejmu może być obywatel polski mający prawo wybierania, który najpóźniej w dniu wyborów kończy 21 lat"[^konst21Lat]. Raper ma obecnie skończone 25 lat[^mataWiek], więc nie jest za młody, aby zostać wybrany na posła RP. Do uzyskania możliwości startowania w wyborach prezydenckich brakuje mu natomiast 10 lat[^konstPrezydentWiek].
+
+
+```{r}
+#| code-summary: "Statystyki deksryptywne wieku aktywnych posłów X kadencji wg klubów"
+#| label: wiekPartieTableDescStats
+df |> 
+  filter(czyAktywny) |> 
+  group_by(klub) |> 
+  summarize( 
+    posłów = n(),
+    wiekŚrednia  = round(mean(wiek), 2),
+      wiekOdchStd  = round(sd(wiek), 2),
+      wiekMin  = min(wiek),
+      wiekQ1       = round(quantile(wiek, 0.25, na.rm = TRUE), 0),
+      wiekMediana  = round(median(wiek), 0),
+      wiekQ3       = round(quantile(wiek, 0.75, na.rm = TRUE), 0),
+      wiekMaks = max(wiek),
+    .groups   = "drop"
+  ) |> 
+  arrange(wiekMediana) |> 
+  gt() |> 
+  colorRowsByClub()
+```
+
+```{r}
+#| code-summary: "Rozkłady wieku aktywnych posłów X kadencji wg klubów -- sortowanie rosnące wg mediany"
+#| label: wiekPartieBoxMedian
+#| fig-height: 5
 
 df2 <- df |>
   filter(!is.na(wiek), !is.na(klub), czyAktywny) |>
@@ -248,10 +566,10 @@ ggplot(df2, aes(x = wiek, y = klub, fill = klub)) +
   geom_boxplot(width = 0.18, outlier.shape = NA, alpha = 0.35) +
   geom_text(
     data = med_df,
-    aes(x = med + 0.6, y = klub, label = round(med, 1), color = klub),
+    aes(x = med + 0.6, y = klub, label = round(med, 0), color = klub),
     inherit.aes = FALSE,
     vjust = -1.15,
-    hjust = .85,
+    hjust = .95,
     size = 3,
     show.legend = FALSE,
 
@@ -269,20 +587,298 @@ ggplot(df2, aes(x = wiek, y = klub, fill = klub)) +
   scale_color_manual(values = club_palette_core, guide = "none") +
   coord_cartesian(xlim = c(x_min - 8, x_max + 2), clip = "off") +
   scale_x_continuous(breaks = seq(25, 85, by = 5)) +
+  labs(x="Wiek")+
   theme_minimal() +
   theme(
     legend.position = "none",
-    axis.title = element_blank(),
+    axis.title.y = element_blank(),
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     panel.grid.major.y = element_blank(),
     plot.margin = margin(5.5, 5.5, 5.5, 40),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
-    axis.text.x = element_text(color="lightgrey")
+    # axis.text.x = element_text(color="black")
   )
 ```
 
+Wiek aktywnych posłów wyraźnie różni się między klubami, a porządek po medianie pokazuje spójną „oś pokoleniową” sceny parlamentarnej: najmłodszy profil ma **Konfederacja** (mediana **40**, średnia **42.44**, IQR **39–45**, n=16), relatywnie młode są też małe kluby **Razem** (mediana **46**, n=4) i **Polska 2050** (mediana **49**, n=31), podczas gdy **KO** lokuje się w środku (mediana **52**, n=156). Najwyższe mediany mają duże kluby **PiS** i **PSL** (obie po **56**, przy większym rozrzucie, zwłaszcza w PiS: IQR **44–65**, n=188), co wskazuje na bardziej doświadczoną, starszą strukturę wieku. Kluby o dużych liczebnościach (KO, PiS, PSL) mają nie tylko wyższe mediany, ale też szersze spektrum wieku, natomiast małe grupy wyglądają na bardziej zbite/homogeniczne wiekowo -- choć bardzo małych próbach (n=3–4) te wartości należy traktować ostrożnie jako opis stanu, a nie stabilną cechę elektoratu czy rekrutacji.
+
+## Płeć
+
+
+```{r}
+#| code-summary: "Odsetek kobiet i mężczyzn wśród aktywnych posłów X kadencji"
+#| label: plcieTable
+
+df |>
+  filter(czyAktywny, !is.na(plec)) |>
+  mutate(
+    plec = case_when(
+      plec %in% c("M", "mężczyzna", "Mężczyzna", "Mezczyzna") ~ "Mężczyźni",
+      plec %in% c("K", "kobieta", "Kobieta") ~ "Kobiety",
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(plec)) |>
+  count(plec, name = "n") |>
+  mutate(
+    total = sum(n),
+    pct = n / total
+  ) |>
+  select(plec, n, pct) |>
+  mutate(pct = scales::percent(pct, accuracy = 0.1)) |>
+  arrange(desc(n)) |> 
+  gt() |>
+  cols_label(plec = "Płeć", n = "Liczba", pct = "Odsetek") |>
+  cols_align("center", everything()) |>
+  # kolorowanie całych wierszy (alpha = 0.35)
+  tab_style(
+    style = cell_fill(color = alpha(sex_palette[["Kobiety"]], 0.35)),
+    locations = cells_body(rows = plec == "Kobiety")
+  ) |>
+  tab_style(
+    style = cell_fill(color = alpha(sex_palette[["Mężczyźni"]], 0.35)),
+    locations = cells_body(rows = plec == "Mężczyźni")
+  )
+```
+```{r}
+#| code-summary: "Aktywni posłowie X kadencji wg płci – symulacja sali sejmowej"
+#| label: ggparlimentPlcie
+library(shadowtext)
+library(scales)
+
+
+levels_order <- c("Mężczyźni","Kobiety")
+
+# paleta dla płci (podmień kolory jak chcesz)
+seats <- df |>
+  filter(czyAktywny, !is.na(plec)) |>
+  mutate(
+    plec = case_when(
+      plec %in% c("M", "mężczyzna", "Mężczyzna", "Mezczyzna") ~ "Mężczyźni",
+      plec %in% c("K", "kobieta", "Kobieta") ~ "Kobiety",
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(plec)) |>
+  count(plec, name = "seats") |>
+  mutate(party = factor(plec, levels = levels_order)) |>
+  arrange(party)
+
+layout <- ggparliament::parliament_data(
+  election_data = NULL,
+  party_seats   = seats$seats,
+  type          = "semicircle",
+  parl_rows     = 10
+)
+
+# promieniście: po kącie + po promieniu
+layout <- layout |>
+  mutate(r = sqrt(x^2 + y^2)) |>
+  arrange(desc(theta), desc(r))
+
+layout$party <- rep(as.character(seats$party), seats$seats)
+layout$party <- factor(layout$party, levels = levels_order)
+
+total_seats <- 460L
+
+sex_stats <- seats |>
+  transmute(
+    party   = as.character(party),
+    pct     = seats / total_seats,
+    pct_lab = scales::percent(pct, accuracy = 1)
+  )
+
+# pozycje etykiet: "pusty środek" półokręgu (promień mniejszy niż najbliższe punkty danej płci)
+layout_lab <- layout |>
+  mutate(
+    r      = sqrt(x^2 + y^2),
+    theta2 = atan2(y, x)
+  ) |>
+  group_by(party) |>
+  summarise(
+    theta = median(theta2),
+    rmin  = min(r),
+    rmax  = max(r),
+    .groups = "drop"
+  ) |>
+  mutate(
+    # ŚRODEK "grubości" sektora (wewnątrz niebieskiego/różowego, a nie w pustym środku)
+    alpha = if_else(party == "Mężczyźni", 0.60, 0.55),  # drobna asymetria działa lepiej wizualnie
+    r_lab = rmin + alpha * (rmax - rmin),
+
+    # opcjonalny mikronudge "po łuku", żeby nie siadało idealnie na kropce
+    t_nudge = 0.06 * (rmax - rmin),
+    x_lab = r_lab * cos(theta) + t_nudge * (-sin(theta)),
+    y_lab = r_lab * sin(theta) + t_nudge * ( cos(theta))
+  ) |>
+  select(-alpha, -t_nudge) |>
+  left_join(sex_stats, by = "party")
+
+ggplot(layout, aes(x, y, colour = party)) +
+  geom_point(size = 5) +
+  shadowtext::geom_shadowtext(
+    data = layout_lab,
+    aes(x = x_lab, y = y_lab, label = pct_lab, colour = party),
+    inherit.aes = FALSE,
+    fontface = "bold",
+    size = 5,                                # lekko mniejsze
+    bg.colour = scales::alpha("white", 0.95),  # biały obrys
+    bg.r = 0.22,                               # grubość obrysu (0.15–0.28)
+    show.legend = FALSE
+  ) +
+  coord_equal(clip = "off") +
+  scale_colour_manual(values = sex_palette, labels = sex_labels) +
+  theme_void() +
+  theme(legend.position = "bottom", legend.title = element_blank(),
+  legend.text = ggtext::element_markdown())
+```
+
+```{r}
+#| code-summary: "Podział płci wg członków klubów X kadencji -- sortowanie wg odsetka kobiet"
+#| label: plciPartieStackedBarr100
+# library(dplyr)
+# library(ggplot2)
+# library(forcats)
+# library(scales)
+# library(ggtext)
+
+sex_palette <- c(
+  "Mężczyźni" = "#2C7FB8",
+  "Kobiety"   = "#C51B7D"
+)
+
+sex_order  <- c("Mężczyźni", "Kobiety")
+sex_values <- sex_palette[sex_order]
+sex_labels <- setNames(
+  sprintf("<span style='color:%s'>%s</span>", sex_values, names(sex_values)),
+  names(sex_values)
+)
+
+df_g <- df |>
+  filter(czyAktywny, !is.na(klub), !is.na(plec)) |>
+  mutate(
+    plec = case_when(
+      plec == "M" ~ "Mężczyźni",
+      plec == "K" ~ "Kobiety",
+      TRUE ~ NA_character_
+    ),
+    plec = factor(plec, levels = sex_order)
+  ) |>
+  filter(!is.na(plec))
+
+share_df <- df_g |>
+  count(klub, plec, name = "n") |>
+  group_by(klub) |>
+  mutate(total = sum(n), prop = n / total) |>
+  ungroup()
+
+women_df <- share_df |>
+  filter(plec == "Kobiety") |>
+  transmute(klub, women_share = prop)
+
+women_df <- share_df |>
+  distinct(klub, total) |>
+  left_join(women_df, by = "klub") |>
+  mutate(
+    women_share = coalesce(women_share, 0),
+    klub = fct_reorder(klub, women_share, .desc = FALSE),
+    label = paste0(as.character(klub), "  (n=", total, ")")
+  )
+
+share_df <- share_df |>
+  left_join(women_df |> select(klub, women_share), by = "klub") |>
+  mutate(
+    klub = fct_reorder(klub, women_share, .desc = FALSE),
+    pct_lab = scales::percent(prop, accuracy = 1)
+  )
+
+# etykiety wewnątrz segmentów tylko dla klubów, które mają kobiety
+inside_df <- share_df |>
+  filter(women_share > 0, prop > 0)
+
+# 0% po prawej dla klubów bez kobiet
+zero_df <- women_df |>
+  filter(women_share == 0) |>
+  mutate(women_lab = "0%")
+
+men100_df <- women_df |>
+  filter(women_share == 0) |>
+  mutate(men_lab = "100%")
+
+ggplot(share_df, aes(x = prop, y = klub, fill = plec)) +
+  geom_col(width = 0.75, position = position_stack(reverse = TRUE)) +
+
+  # label klubu po lewej (kolor wg palety klubów)
+  geom_text(
+    data = women_df,
+    aes(x = -0.01, y = klub, label = label, color = klub),
+    inherit.aes = FALSE,
+    hjust = 1,
+    size = 3.5,
+    show.legend = FALSE
+  ) +
+
+  # procenty w środku KAŻDEGO segmentu (białe) – ale tylko tam, gdzie są kobiety
+  geom_text(
+    data = inside_df,
+    aes(label = pct_lab),
+    position = position_stack(vjust = 0.5, reverse = TRUE),
+    inherit.aes = TRUE,
+    color = "white",
+    fontface = "bold",
+    size = 3.2,
+    show.legend = FALSE
+  ) +
+
+  # 0% po prawej (czarne, bo białe tło)
+  geom_text(
+    data = zero_df,
+    aes(x = 1.02, y = klub, label = women_lab),
+    inherit.aes = FALSE,
+    color = "black",
+    hjust = 0,
+    size = 3.2,
+    show.legend = FALSE
+  ) +
+
+  geom_text(
+    data = men100_df,
+    aes(x = 0.5, y = klub, label = men_lab),
+    inherit.aes = FALSE,
+    color = "white",
+    fontface = "bold",
+    size = 3.2,
+    show.legend = FALSE
+  ) +
+  scale_fill_manual(values = sex_values, labels = sex_labels) +
+  scale_color_manual(values = club_palette_core, guide = "none") +
+  scale_x_continuous(
+    labels = percent_format(accuracy = 1),
+    breaks = seq(0, 1, by = 0.1),
+    expand = c(0, 0)
+  ) +
+  coord_cartesian(xlim = c(-0.25, 1.08), clip = "off") +
+  labs(x = "Udział w klubie", y = NULL, fill = NULL) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.text = ggtext::element_markdown(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dotted", alpha = .7),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(color = "lightgray")
+  )
+
+```
+
+Struktura płci wśród aktywnych posłów X kadencji pozostaje wyraźnie asymetryczna: mężczyźni stanowią ok. 68,5% składu (315 osób), a kobiety 31,5% (145), co potwierdza, że mimo formalnych mechanizmów równościowych reprezentacja kobiet wciąż nie osiąga poziomu „równowagi” demograficznej. Ciekawe spostrzeżenie wyłania się, gdy spojrzymy na rozkład płci w poszczególnych klubach -- jeśli posortujemy malejąco względem odsetka kobiet w ugrupowaniu, dostaniemy wręcz ,,wzorcowy" podział światopoglądowy od lewicy, przez bliżej niezdefiniowane centrum, liberałów, centroprawicę aż do skrajnej prawicy. Może to sugerować, iż obserwowana nierównowaga wynika z odmiennych strategii rekrutacyjnych, profili elektoratu i wewnętrznych praktyk organizacyjnych. W efekcie, agregatowy wynik dla całego Sejmu maskuje istotną polaryzację: część klubów „ciągnie” średnią w stronę większej reprezentacji kobiet, podczas gdy inne utrzymują skład niemal wyłącznie męski -- a to ma konsekwencje dla tego, jak reprezentacja społeczna jest rozłożona w ramach realnych bloków głosowań i koalicji.
+
+## Miejsca urodzenia 
 
 
 [^konst460]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 96 ust. 1](https://www.sejm.gov.pl/prawo/konst/polski/4.htm#:~:text=Sejm%20składa%20się%20z%20460%20posłów)
@@ -292,3 +888,11 @@ ggplot(df2, aes(x = wiek, y = klub, fill = klub)) +
 [^kodWybMandat]: [Ustawa z dnia 5 stycznia 2011 r. – Kodeks wyborczy (Dz.U. 2011 nr 21 poz. 112 z późn. zm.), art. 251 § 1–3](https://arslege.pl/obsadzenie-mandatu-posla-w-trakcie-kadencji-sejmu/k510/a43080/)
 
 [^stronaSejmu]: [https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp?type=A](https://www.sejm.gov.pl/Sejm10.nsf/poslowie.xsp?type=A)
+
+[^geniusMata]: [https://genius.com/Mata-bede-prezydentem-lyrics](https://genius.com/Mata-bede-prezydentem-lyrics)
+
+[^konst21Lat]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 99 ust. 1](https://www.sejm.gov.pl/prawo/konst/polski/4.htm)
+
+[^mataWiek]: [https://pl.wikipedia.org/wiki/Mata_(raper)](https://pl.wikipedia.org/wiki/Mata_(raper))
+
+[^konstPrezydentWiek]: [Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. (Dz.U. 1997 nr 78 poz. 483), art. 127 ust. 3](https://www.sejm.gov.pl/prawo/konst/polski/5.htm)
