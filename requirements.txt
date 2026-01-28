@@ -104,10 +104,13 @@ rfc3986-validator==0.1.1
 rfc3987-syntax==1.1.0
 rpds-py==0.30.0
 seaborn==0.13.2
+scikit-learn==1.8.0
+scipy==1.17.0
 Send2Trash==2.0.0
 setuptools==80.9.0
 six==1.17.0
 soupsieve==2.8.1
+stopwordsiso==0.6.1
 stack-data==0.6.3
 terminado==0.18.1
 tinycss2==1.4.0
